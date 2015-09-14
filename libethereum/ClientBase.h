@@ -140,7 +140,7 @@ public:
 	virtual BlockInfo pendingInfo() const override;
 	virtual BlockDetails pendingDetails() const override;
 
-	virtual ImportResult injectTransaction(bytes const& _rlp, IfDropped _id = IfDropped::Ignore) override { prepareForTransaction(); return m_tq.import(_rlp, _id); }
+	virtual ImportResult sendRawTransaction(bytes const& _rlp, IfDropped _id = IfDropped::Ignore) override { prepareForTransaction(); return m_tq.import(_rlp, _id); }
 	virtual ImportResult injectBlock(bytes const& _block) override;
 
 	using Interface::diff;
