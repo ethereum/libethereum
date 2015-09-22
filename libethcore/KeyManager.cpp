@@ -34,6 +34,76 @@ using namespace eth;
 namespace js = json_spirit;
 namespace fs = boost::filesystem;
 
+namespace dev
+{
+namespace eth
+{
+std::string errorDescription(PasswordValidation _validation)
+{
+	switch (_validation)
+	{
+		case PasswordValidation::Valid: return "";
+		case PasswordValidation::PasswordIsEmpty: return "Password is empty";
+		case PasswordValidation::PasswordIsToShort: return "Password is to short";
+		case PasswordValidation::PasswordsNotEqual: return "Passwords are not equal";
+	}
+}
+}
+}
+
+class PasswordRuleEmpty: public PasswordRule
+{
+public:
+	virtual PasswordValidation check(string const& _s1, string const& _s2) const
+	{
+		(void)_s2;
+		return _s1.empty() ? PasswordValidation::PasswordIsEmpty : PasswordValidation::Valid;
+	}
+};
+
+class PasswordRuleLength: public PasswordRule
+{
+public:
+	PasswordRuleLength(unsigned _l = 1): c_length(_l) {};
+	
+	virtual PasswordValidation check(string const& _s1, string const& _s2) const
+	{
+		(void)_s2;
+		return _s1.length() < c_length ? PasswordValidation::PasswordIsToShort : PasswordValidation::Valid;
+	}
+
+private:
+	unsigned const c_length;
+};
+
+class PasswordRuleEqual: public PasswordRule
+{
+public:
+	virtual PasswordValidation check(string const& _s1, string const& _s2) const
+	{
+		return _s1 != _s2 ? PasswordValidation::PasswordsNotEqual : PasswordValidation::Valid;
+	}
+};
+
+PasswordValidation PasswordValidator::check(string const& _s1, string const& _s2) const
+{
+	PasswordValidation v = PasswordValidation::Valid;
+	for (auto const& rule: m_rules)
+	{
+		v = rule->check(_s1, _s2);
+		if (v != PasswordValidation::Valid)
+			break;
+	}
+	return v;
+}
+
+DefaultPasswordValidator::DefaultPasswordValidator()
+{
+	m_rules.emplace_back(new PasswordRuleEmpty());
+	m_rules.emplace_back(new PasswordRuleLength(1));
+	m_rules.emplace_back(new PasswordRuleEqual());
+}
+
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
 	m_keysFile(_keysFile), m_store(_secretsPath)
 {}
@@ -168,17 +238,15 @@ string KeyManager::getPassword(h256 const& _passHash, function<string()> const& 
 	auto it = m_cachedPasswords.find(_passHash);
 	if (it != m_cachedPasswords.end())
 		return it->second;
-	for (unsigned i = 0; i < 10; ++i)
+
+	string p = _pass();
+	
+	if (_passHash == UnknownPassword || hashPassword(p) == _passHash)
 	{
-		string p = _pass();
-		if (p.empty())
-			break;
-		if (_passHash == UnknownPassword || hashPassword(p) == _passHash)
-		{
-			cachePassword(p);
-			return p;
-		}
+		cachePassword(p);
+		return p;
 	}
+
 	return string();
 }
 
@@ -332,14 +400,10 @@ bool KeyManager::hasAccount(Address const& _address) const
 
 string const& KeyManager::accountName(Address const& _address) const
 {
-	try
-	{
-		return m_keyInfo.at(_address).accountName;
-	}
-	catch (...)
-	{
-		return EmptyString;
-	}
+	auto it = m_keyInfo.find(_address);
+	if (it != m_keyInfo.end())
+		return it->second.accountName;
+	return EmptyString;
 }
 
 void KeyManager::changeName(Address const& _address, std::string const& _name)
@@ -352,19 +416,26 @@ void KeyManager::changeName(Address const& _address, std::string const& _name)
 	}
 }
 
+bool KeyManager::validatePassword(Address const& _address, std::string const& _password)
+{
+	auto it = m_keyInfo.find(_address);
+	if (it != m_keyInfo.end())
+		return hashPassword(_password) == it->second.passHash;
+	return false;
+}
+
 string const& KeyManager::passwordHint(Address const& _address) const
 {
-	try
+	auto it = m_keyInfo.find(_address);
+	if (it != m_keyInfo.end())
 	{
-		auto& info = m_keyInfo.at(_address);
-		if (info.passwordHint.size())
-			return info.passwordHint;
-		return m_passwordHint.at(info.passHash);
+		if (it->second.passwordHint.size())
+			return it->second.passwordHint;
+		auto i = m_passwordHint.find(it->second.passHash);
+		if (i != m_passwordHint.end())
+			return i->second;
 	}
-	catch (...)
-	{
-		return EmptyString;
-	}
+	return EmptyString;
 }
 
 h256 KeyManager::hashPassword(string const& _pass) const
