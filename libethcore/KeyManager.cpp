@@ -46,6 +46,7 @@ std::string errorDescription(PasswordValidation _validation)
 		case PasswordValidation::PasswordIsEmpty: return "Password is empty";
 		case PasswordValidation::PasswordIsToShort: return "Password is to short";
 		case PasswordValidation::PasswordsNotEqual: return "Passwords are not equal";
+		default: return "Unknown error";
 	}
 }
 }
