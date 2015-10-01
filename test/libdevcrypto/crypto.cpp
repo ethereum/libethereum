@@ -23,6 +23,7 @@
 
 #if ETH_HAVE_SECP256K1
 #include <secp256k1/include/secp256k1.h>
+#include <secp256k1/include/secp256k1_recovery.h>
 #endif
 #include <libdevcore/Common.h>
 #include <libdevcore/RLP.h>
@@ -111,10 +112,6 @@ BOOST_AUTO_TEST_CASE(common_encrypt_decrypt)
 
 BOOST_AUTO_TEST_CASE(cryptopp_cryptopp_secp256k1libport)
 {
-#if ETH_HAVE_SECP256K1
-	secp256k1_context_t* ctx = secp256k1_context_create(SECP256K1_CONTEXT_SIGN | SECP256K1_CONTEXT_VERIFY);
-#endif
-	
 	// base secret
 	Secret secret(sha3("privacy"));
 	
@@ -156,14 +153,9 @@ BOOST_AUTO_TEST_CASE(cryptopp_cryptopp_secp256k1libport)
 		// verify w/cryptopp
 		BOOST_REQUIRE(s_secp256k1.verify(pkey, sig, bytesConstRef(&e)));
 		
-		// verify with secp256k1lib
-		byte encpub[65] = {0x04};
-		memcpy(&encpub[1], pkey.data(), 64);
-		byte dersig[72];
-		size_t cssz = DSAConvertSignatureFormat(dersig, 72, DSA_DER, sig.data(), 64, DSA_P1363);
-		BOOST_CHECK(cssz <= 72);
 #if ETH_HAVE_SECP256K1
-		BOOST_REQUIRE(1 == secp256k1_ecdsa_verify(ctx, he.data(), dersig, cssz, encpub, 65));
+		// verify with secp256k1lib
+		BOOST_REQUIRE(dev::verify(pkey, sig, he));
 #endif
 	}
 }
