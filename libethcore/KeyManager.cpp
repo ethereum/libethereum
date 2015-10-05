@@ -390,7 +390,7 @@ string const& KeyManager::passwordHint(Address const& _address) const
 	auto it = m_keyInfo.find(_address);
 	if (it != m_keyInfo.end())
 	{
-		if (it->second.passwordHint.size())
+		if (!it->second.passwordHint.empty())
 			return it->second.passwordHint;
 		auto i = m_passwordHint.find(it->second.passHash);
 		if (i != m_passwordHint.end())
