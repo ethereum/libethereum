@@ -36,9 +36,9 @@ class PasswordUnknown: public Exception {};
 enum class PasswordValidation
 {
 	Valid,
-	PasswordIsEmpty,
-	PasswordIsToShort,
-	PasswordsNotEqual
+	Empty,
+	TooShort,
+	NotEqual
 };
 
 std::string errorDescription(PasswordValidation _validation);

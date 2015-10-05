@@ -43,9 +43,9 @@ std::string errorDescription(PasswordValidation _validation)
 	switch (_validation)
 	{
 		case PasswordValidation::Valid: return "";
-		case PasswordValidation::PasswordIsEmpty: return "Password is empty";
-		case PasswordValidation::PasswordIsToShort: return "Password is to short";
-		case PasswordValidation::PasswordsNotEqual: return "Passwords are not equal";
+		case PasswordValidation::Empty: return "Password is empty";
+		case PasswordValidation::TooShort: return "Password is to short";
+		case PasswordValidation::NotEqual: return "Passwords are not equal";
 		default: return "Unknown error";
 	}
 }
@@ -58,7 +58,7 @@ public:
 	virtual PasswordValidation check(string const& _s1, string const& _s2) const
 	{
 		(void)_s2;
-		return _s1.empty() ? PasswordValidation::PasswordIsEmpty : PasswordValidation::Valid;
+		return _s1.empty() ? PasswordValidation::Empty : PasswordValidation::Valid;
 	}
 };
 
@@ -70,7 +70,7 @@ public:
 	virtual PasswordValidation check(string const& _s1, string const& _s2) const
 	{
 		(void)_s2;
-		return _s1.length() < c_length ? PasswordValidation::PasswordIsToShort : PasswordValidation::Valid;
+		return _s1.length() < c_length ? PasswordValidation::TooShort : PasswordValidation::Valid;
 	}
 
 private:
@@ -82,7 +82,7 @@ class PasswordRuleEqual: public PasswordRule
 public:
 	virtual PasswordValidation check(string const& _s1, string const& _s2) const
 	{
-		return _s1 != _s2 ? PasswordValidation::PasswordsNotEqual : PasswordValidation::Valid;
+		return _s1 != _s2 ? PasswordValidation::NotEqual : PasswordValidation::Valid;
 	}
 };
 
