@@ -43,25 +43,10 @@ enum class PasswordValidation
 
 std::string errorDescription(PasswordValidation _validation);
 
-class PasswordRule
-{
-public:
-	virtual PasswordValidation check(std::string const& _s1, std::string const& _s2) const = 0;
-};
-
 class PasswordValidator
 {
 public:
 	PasswordValidation check(std::string const& _s1, std::string const& _s2) const;
-	
-protected:
-	std::vector<std::unique_ptr<PasswordRule>> m_rules;
-};
-
-class DefaultPasswordValidator: public PasswordValidator
-{
-public:
-	DefaultPasswordValidator();
 };
 
 struct KeyInfo

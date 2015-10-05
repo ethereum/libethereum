@@ -44,7 +44,7 @@ std::string errorDescription(PasswordValidation _validation)
 	{
 		case PasswordValidation::Valid: return "";
 		case PasswordValidation::Empty: return "Password is empty";
-		case PasswordValidation::TooShort: return "Password is to short";
+		case PasswordValidation::TooShort: return "Password is too short";
 		case PasswordValidation::NotEqual: return "Passwords are not equal";
 		default: return "Unknown error";
 	}
@@ -52,57 +52,17 @@ std::string errorDescription(PasswordValidation _validation)
 }
 }
 
-class PasswordRuleEmpty: public PasswordRule
-{
-public:
-	virtual PasswordValidation check(string const& _s1, string const& _s2) const
-	{
-		(void)_s2;
-		return _s1.empty() ? PasswordValidation::Empty : PasswordValidation::Valid;
-	}
-};
-
-class PasswordRuleLength: public PasswordRule
-{
-public:
-	PasswordRuleLength(unsigned _l = 1): c_length(_l) {};
-	
-	virtual PasswordValidation check(string const& _s1, string const& _s2) const
-	{
-		(void)_s2;
-		return _s1.length() < c_length ? PasswordValidation::TooShort : PasswordValidation::Valid;
-	}
-
-private:
-	unsigned const c_length;
-};
-
-class PasswordRuleEqual: public PasswordRule
-{
-public:
-	virtual PasswordValidation check(string const& _s1, string const& _s2) const
-	{
-		return _s1 != _s2 ? PasswordValidation::NotEqual : PasswordValidation::Valid;
-	}
-};
-
 PasswordValidation PasswordValidator::check(string const& _s1, string const& _s2) const
 {
 	PasswordValidation v = PasswordValidation::Valid;
-	for (auto const& rule: m_rules)
-	{
-		v = rule->check(_s1, _s2);
-		if (v != PasswordValidation::Valid)
-			break;
-	}
-	return v;
-}
+	
+	if (_s1.empty())
+		v = PasswordValidation::Empty;
+	else if (_s1 != _s2)
+		v = PasswordValidation::NotEqual;
+	// check minimum password length?
 
-DefaultPasswordValidator::DefaultPasswordValidator()
-{
-	m_rules.emplace_back(new PasswordRuleEmpty());
-	m_rules.emplace_back(new PasswordRuleLength(1));
-	m_rules.emplace_back(new PasswordRuleEqual());
+	return v;
 }
 
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
