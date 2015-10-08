@@ -84,6 +84,8 @@ enum class SemanticPassword
 class KeyManager
 {
 public:
+	enum class NewKeyType { DirectICAP = 0, NoVanity, FirstTwo, FirstTwoNextTwo, FirstThree, FirstFour };
+
 	KeyManager(std::string const& _keysFile = defaultPath(), std::string const& _secretsPath = SecretStore::defaultPath());
 	~KeyManager();
 
@@ -155,6 +157,8 @@ public:
 	/// @returns the HD subkey for a given key.
 	static Secret subkey(Secret const& _s, unsigned _index);
 
+	/// @returns new random keypair with given vanity
+	static  KeyPair newKeyPair(NewKeyType _type);
 private:
 	std::string getPassword(h128 const& _uuid, std::function<std::string()> const& _pass = DontKnowThrow) const;
 	std::string getPassword(h256 const& _passHash, std::function<std::string()> const& _pass = DontKnowThrow) const;

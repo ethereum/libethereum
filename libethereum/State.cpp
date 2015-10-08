@@ -321,7 +321,7 @@ Address State::newContract(u256 const& _balance, bytes const& _code)
 		auto it = m_cache.find(ret);
 		if (it == m_cache.end())
 		{
-			m_cache[ret] = Account(0, _balance, EmptyTrie, h, Account::Changed);
+			m_cache[ret] = Account(c_accountStartNonce, _balance, EmptyTrie, h, Account::Changed);
 			return ret;
 		}
 	}
