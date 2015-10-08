@@ -43,11 +43,7 @@ enum class PasswordValidation
 
 std::string errorDescription(PasswordValidation _validation);
 
-class PasswordValidator
-{
-public:
-	PasswordValidation check(std::string const& _s1, std::string const& _s2) const;
-};
+PasswordValidation validatePassword(std::string const& _s1, std::string const& _s2);
 
 struct KeyInfo
 {

@@ -49,13 +49,11 @@ std::string errorDescription(PasswordValidation _validation)
 		default: return "Unknown error";
 	}
 }
-}
-}
 
-PasswordValidation PasswordValidator::check(string const& _s1, string const& _s2) const
+PasswordValidation validatePassword(string const& _s1, string const& _s2)
 {
 	PasswordValidation v = PasswordValidation::Valid;
-	
+
 	if (_s1.empty())
 		v = PasswordValidation::Empty;
 	else if (_s1 != _s2)
@@ -63,6 +61,8 @@ PasswordValidation PasswordValidator::check(string const& _s1, string const& _s2
 	// check minimum password length?
 
 	return v;
+}
+}
 }
 
 KeyManager::KeyManager(string const& _keysFile, string const& _secretsPath):
