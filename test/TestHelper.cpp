@@ -906,6 +906,14 @@ string TestOutputHelper::m_currentTestName = "n/a";
 string TestOutputHelper::m_currentTestCaseName = "n/a";
 
 using namespace boost;
+void TestOutputHelper::initTest()
+{
+	m_currentTestCaseName = boost::unit_test::framework::current_test_case().p_name;
+	std::cout << "Test Case \"" + m_currentTestCaseName + "\": " << std::endl;
+	m_maxTests = 1;
+	m_currTest = 0;
+}
+
 void TestOutputHelper::initTest(json_spirit::mValue& _v)
 {
 	m_currentTestCaseName = boost::unit_test::framework::current_test_case().p_name;

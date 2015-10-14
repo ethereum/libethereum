@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_SUITE(TransactionQueue)
 
 BOOST_AUTO_TEST_CASE(maxNonce)
 {
-
+	test::TestOutputHelper::initTest();
 	dev::eth::TransactionQueue txq;
 
 	// from a94f5374fce5edbc8e2a8697c15331677e6ebf0b
@@ -63,6 +63,7 @@ BOOST_AUTO_TEST_CASE(maxNonce)
 
 BOOST_AUTO_TEST_CASE(priority)
 {
+	test::TestOutputHelper::initTest();
 	dev::eth::TransactionQueue txq;
 
 	const u256 gasCostCheap =  10 * szabo;
@@ -120,6 +121,7 @@ BOOST_AUTO_TEST_CASE(priority)
 
 BOOST_AUTO_TEST_CASE(future)
 {
+	test::TestOutputHelper::initTest();
 	dev::eth::TransactionQueue txq;
 
 	// from a94f5374fce5edbc8e2a8697c15331677e6ebf0b
@@ -151,6 +153,7 @@ BOOST_AUTO_TEST_CASE(future)
 
 BOOST_AUTO_TEST_CASE(lmits)
 {
+	test::TestOutputHelper::initTest();
 	dev::eth::TransactionQueue txq(3, 3);
 	const u256 gasCostMed =  20 * szabo;
 	const u256 gas = 25000;
