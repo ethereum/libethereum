@@ -362,6 +362,23 @@ void BlockChain::rebuild(std::string const& _path, std::function<void(unsigned, 
 	boost::filesystem::remove_all(path + "/extras.old");
 }
 
+string BlockChain::dumpDatabase() const
+{
+	stringstream ss;
+
+	ss << m_lastBlockHash << endl;
+	ldb::Iterator* i = m_extrasDB->NewIterator(m_readOptions);
+	for (i->SeekToFirst(); i->Valid(); i->Next())
+	{
+		ss << toHex(bytesConstRef(i->key())) << "/" << toHex(bytesConstRef(i->value())) << endl;
+	}
+/*	for (auto h = m_lastBlockHash; h; h = info(h).parentHash())
+	{
+		ss << h <<
+	)*/
+	return ss.str();
+}
+
 LastHashes BlockChain::lastHashes(unsigned _n) const
 {
 	Guard l(x_lastLastHashes);
@@ -518,7 +535,7 @@ void BlockChain::insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _
 	}
 
 	// Work out its number as the parent's number + 1
-	if (!isKnown(_block.info.parentHash()))
+	if (!isKnown(_block.info.parentHash(), false))
 	{
 		clog(BlockChainNote) << _block.info.hash() << ": Unknown parent " << _block.info.parentHash();
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
@@ -631,7 +648,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	}
 
 	// Work out its number as the parent's number + 1
-	if (!isKnown(_block.info.parentHash()))
+	if (!isKnown(_block.info.parentHash(), false))	// doesn't have to be current.
 	{
 		clog(BlockChainNote) << _block.info.hash() << ": Unknown parent " << _block.info.parentHash();
 		// We don't know the parent (yet) - discard for now. It'll get resent to us if we find out about its ancestry later on.
@@ -1313,7 +1330,7 @@ h256Hash BlockChain::allKinFrom(h256 const& _parent, unsigned _generations) cons
 	return ret;
 }
 
-bool BlockChain::isKnown(h256 const& _hash) const
+bool BlockChain::isKnown(h256 const& _hash, bool _isCurrent) const
 {
 	if (_hash == m_genesisHash)
 		return true;
@@ -1335,7 +1352,7 @@ bool BlockChain::isKnown(h256 const& _hash) const
 				return false;
 		}
 //	return true;
-	return details(_hash).number <= m_lastBlockNumber;		// to allow rewind functionality.
+	return !_isCurrent || details(_hash).number <= m_lastBlockNumber;		// to allow rewind functionality.
 }
 
 bytes BlockChain::block(h256 const& _hash) const

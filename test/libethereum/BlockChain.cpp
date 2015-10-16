@@ -37,7 +37,9 @@ using namespace json_spirit;
 using namespace dev;
 using namespace dev::eth;
 
-namespace dev {  namespace test {
+namespace dev {
+
+namespace test {
 
 //Functions that working with test json
 void compareBlocks(TestBlock const& _a, TestBlock const& _b);
@@ -687,7 +689,9 @@ void checkBlocks(TestBlock const& _blockFromFields, TestBlock const& _blockFromR
 		BOOST_CHECK_MESSAGE(unclesFromField.at(i).getBlockHeader() == unclesFromRlp.at(i).getBlockHeader(), _testname + "block header in rlp and in field do not match at uncles");
 }
 
-}}//namespaces
+//namespaces
+}
+}
 
 BOOST_AUTO_TEST_SUITE(BlockChainTests)
 

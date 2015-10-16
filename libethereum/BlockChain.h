@@ -135,7 +135,7 @@ public:
 	void insert(VerifiedBlockRef _block, bytesConstRef _receipts, bool _mustBeNew = true);
 
 	/// Returns true if the given block is known (though not necessarily a part of the canon chain).
-	bool isKnown(h256 const& _hash) const;
+	bool isKnown(h256 const& _hash, bool _isCurrent = true) const;
 
 	/// Get the partial-header of a block (or the most recent mined if none given). Thread-safe.
 	BlockInfo info(h256 const& _hash) const { return BlockInfo(headerData(_hash), CheckNothing, _hash, HeaderData); }
@@ -295,6 +295,9 @@ public:
 
 	/// Verify block and prepare it for enactment
 	virtual VerifiedBlockRef verifyBlock(bytesConstRef _block, std::function<void(Exception&)> const& _onBad, ImportRequirements::value _ir = ImportRequirements::OutOfOrderChecks) const = 0;
+
+	/// Gives a dump of the blockchain database. For debug/test use only.
+	std::string dumpDatabase() const;
 
 protected:
 	static h256 chunkId(unsigned _level, unsigned _index) { return h256(_index * 0xff + _level); }
