@@ -39,6 +39,7 @@ BOOST_AUTO_TEST_SUITE(DashimotoTests)
 
 BOOST_AUTO_TEST_CASE(basic_test)
 {
+	test::TestOutputHelper::initTest();
 	string testPath = test::getTestPath();
 
 	testPath += "/PoWTests";

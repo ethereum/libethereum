@@ -35,6 +35,7 @@ BOOST_AUTO_TEST_SUITE(DifficultyTests)
 
 BOOST_AUTO_TEST_CASE(difficultyTests)
 {
+	test::TestOutputHelper::initTest();
 	string testPath = test::getTestPath();
 	testPath += "/BasicTests";
 
