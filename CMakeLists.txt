@@ -53,6 +53,7 @@ endif()
 # executables
 
 if (TOOLS)
+	add_subdirectory(e)
 	add_subdirectory(ethkey)
 	add_subdirectory(ethminer)
 	add_subdirectory(ethvm)
