@@ -57,15 +57,16 @@ Network resetNetwork(Network _n)
 		break;
 	case Network::Frontier:
 	case Network::Morden:
+	case Network::Fluidity:
 		c_minGasLimit = 5000;
 		break;
 	}
 	c_gasFloorTarget = 3141592;
 	c_gasLimitBoundDivisor = 1024;
-	c_minimumDifficulty = 131072;
+	c_minimumDifficulty = c_network == Network::Fluidity ? 0 : 131072;
 	c_difficultyBoundDivisor = 2048;
-	c_durationLimit = c_network == Network::Olympic ? 8 : 13;
-	c_blockReward = c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
+	c_durationLimit = c_network == Network::Fluidity ? 0 : c_network == Network::Olympic ? 8 : 13;
+	c_blockReward = c_network == Network::Fluidity ? 0 : c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 	c_accountStartNonce = c_network == Network::Morden ? u256(1) << 20 : 0;
 	return _n;
 }

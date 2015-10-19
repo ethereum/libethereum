@@ -36,6 +36,7 @@
 #include <libethcore/Params.h>
 #include <libethcore/Sealer.h>
 #include <libethcore/ABI.h>
+#include <libfluidity/Fluidity.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "Block.h"
@@ -375,7 +376,7 @@ protected:
 		Client(_gpForAdoption),
 		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
 	{
-		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
+		m_sealEngine = std::shared_ptr<SealEngineFace>(Sealer::createSealEngine());
 		m_sealEngine->onSealGenerated([=](bytes const& header){
 			this->submitSealed(header);
 		});
