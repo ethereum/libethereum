@@ -87,7 +87,7 @@ mObject FakeExtVM::exportEnv()
 	mObject ret;
 	ret["currentDifficulty"] = toCompactHex(envInfo().difficulty(), HexPrefix::Add, 1);
 	ret["currentTimestamp"] =  toCompactHex(envInfo().timestamp(), HexPrefix::Add, 1);
-	ret["currentCoinbase"] = toString(envInfo().beneficiary());
+	ret["currentCoinbase"] = toString(envInfo().author());
 	ret["currentNumber"] = toCompactHex(envInfo().number(), HexPrefix::Add, 1);
 	ret["currentGasLimit"] = toCompactHex(envInfo().gasLimit(), HexPrefix::Add, 1);
 	return ret;
@@ -106,7 +106,7 @@ void FakeExtVM::importEnv(mObject& _o)
 	info.setGasLimit(toInt(_o["currentGasLimit"]));
 	info.setDifficulty(toInt(_o["currentDifficulty"]));
 	info.setTimestamp(toInt(_o["currentTimestamp"]));
-	info.setBeneficiary(Address(_o["currentCoinbase"].get_str()));
+	info.setAuthor(Address(_o["currentCoinbase"].get_str()));
 	info.setNumber(toInt(_o["currentNumber"]));
 	info.setLastHashes( lastHashes( info.number() ) );
 }

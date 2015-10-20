@@ -68,7 +68,7 @@ BOOST_AUTO_TEST_CASE(Complex)
 	cout << bc;
 
 	Block s = bc.genesisBlock(stateDB);
-	s.setBeneficiary(myMiner.address());
+	s.setAuthor(myMiner.address());
 	cout << s;
 
 	// Sync up - this won't do much until we use the last state.

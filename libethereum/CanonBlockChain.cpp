@@ -86,7 +86,7 @@ bytes CanonBlockChain<Ethash>::createGenesisBlock()
 
 	h256 mixHash(genesis["mixhash"].get_str());
 	h256 parentHash(genesis["parentHash"].get_str());
-	h160 beneficiary(genesis["coinbase"].get_str());
+	h160 author(genesis["coinbase"].get_str());
 	u256 difficulty = fromBigEndian<u256>(fromHex(genesis["difficulty"].get_str()));
 	u256 gasLimit = fromBigEndian<u256>(fromHex(genesis["gasLimit"].get_str()));
 	u256 timestamp = fromBigEndian<u256>(fromHex(genesis["timestamp"].get_str()));
@@ -96,7 +96,7 @@ bytes CanonBlockChain<Ethash>::createGenesisBlock()
 	block.appendList(15)
 			<< parentHash
 			<< EmptyListSHA3	// sha3(uncles)
-			<< beneficiary
+			<< author
 			<< stateRoot
 			<< EmptyTrie	// transactions
 			<< EmptyTrie	// receipts

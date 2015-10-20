@@ -87,7 +87,7 @@ public:
 	TransactionQueue & getTransactionQueue() { return m_transactionQueue; }
 	vector<TestTransaction> const& getTestTransactions() const { return m_testTransactions; }
 	vector<TestBlock> const& getUncles() const { return m_uncles; }
-	Address const& getBeneficiary() const { return m_blockHeader.beneficiary(); }
+	Address const& getBeneficiary() const { return m_blockHeader.author(); }
 
 private:	
 	BlockHeader constructBlock(mObject const& _o, h256 const& _stateRoot);

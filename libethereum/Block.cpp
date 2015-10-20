@@ -147,7 +147,7 @@ PopulationStatistics Block::populateFromChain(BlockChain const& _bc, h256 const&
 		sync(_bc, bi.parentHash(), bip);
 
 		// 2. Enact the block's transactions onto this state.
-		m_beneficiary = bi.beneficiary();
+		m_beneficiary = bi.author();
 		Timer t;
 		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir | ImportRequirements::TransactionBasic);
 		ret.verify = t.elapsed();
@@ -631,10 +631,10 @@ void Block::applyRewards(vector<BlockInfo> const& _uncleBlockHeaders)
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleBlockHeaders)
 	{
-		m_state.addBalance(i.beneficiary(), m_blockReward * (8 + i.number() - m_currentBlock.number()) / 8);
+		m_state.addBalance(i.author(), m_blockReward * (8 + i.number() - m_currentBlock.number()) / 8);
 		r += m_blockReward / 32;
 	}
-	m_state.addBalance(m_currentBlock.beneficiary(), r);
+	m_state.addBalance(m_currentBlock.author(), r);
 }
 
 void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)

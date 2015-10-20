@@ -161,7 +161,7 @@ BOOST_AUTO_TEST_CASE(bcBasicInsert)
 	TestClient tcLight(me.secret());
 
 	Block block = tcFull.bc().genesisBlock(tcFull.db());
-	block.setBeneficiary(myMiner.address());
+	block.setAuthor(myMiner.address());
 
 	// Sync up - this won't do much until we use the last state.
 	block.sync(tcFull.bc());

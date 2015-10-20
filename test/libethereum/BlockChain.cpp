@@ -367,7 +367,7 @@ void overwriteBlockHeaderForTest(mObject const& _blObj, TestBlock& _block, std::
 		tmp = constructHeader(
 			ho.count("parentHash") ? h256(ho["parentHash"].get_str()) : header.parentHash(),
 			ho.count("uncleHash") ? h256(ho["uncleHash"].get_str()) : header.sha3Uncles(),
-			ho.count("coinbase") ? Address(ho["coinbase"].get_str()) : header.beneficiary(),
+			ho.count("coinbase") ? Address(ho["coinbase"].get_str()) : header.author(),
 			ho.count("stateRoot") ? h256(ho["stateRoot"].get_str()): header.stateRoot(),
 			ho.count("transactionsTrie") ? h256(ho["transactionsTrie"].get_str()) : header.transactionsRoot(),
 			ho.count("receiptTrie") ? h256(ho["receiptTrie"].get_str()) : header.receiptsRoot(),
@@ -531,7 +531,7 @@ void overwriteUncleHeaderForTest(mObject& uncleHeaderObj, TestBlock& uncle, std:
 		uncleHeader = constructHeader(
 			overwrite == "parentHash" ? h256(uncleHeaderObj.at("parentHash").get_str()) : uncleHeader.parentHash(),
 			uncleHeader.sha3Uncles(),
-			overwrite == "coinbase" ? Address(uncleHeaderObj.at("coinbase").get_str()) : uncleHeader.beneficiary(),
+			overwrite == "coinbase" ? Address(uncleHeaderObj.at("coinbase").get_str()) : uncleHeader.author(),
 			overwrite == "stateRoot" ? h256(uncleHeaderObj.at("stateRoot").get_str()) : uncleHeader.stateRoot(),
 			uncleHeader.transactionsRoot(),
 			uncleHeader.receiptsRoot(),
@@ -592,7 +592,7 @@ mObject writeBlockHeaderToJson(Ethash::BlockHeader const& _bi)
 	mObject o;
 	o["parentHash"] = toString(_bi.parentHash());
 	o["uncleHash"] = toString(_bi.sha3Uncles());
-	o["coinbase"] = toString(_bi.beneficiary());
+	o["coinbase"] = toString(_bi.author());
 	o["stateRoot"] = toString(_bi.stateRoot());
 	o["transactionsTrie"] = toString(_bi.transactionsRoot());
 	o["receiptTrie"] = toString(_bi.receiptsRoot());
@@ -643,7 +643,7 @@ void checkBlocks(TestBlock const& _blockFromFields, TestBlock const& _blockFromR
 	BOOST_CHECK_MESSAGE(blockHeaderFromFields.headerHash(WithProof) == blockFromRlp.headerHash(WithProof), _testname + "hash in given RLP not matching the block hash!");
 	BOOST_CHECK_MESSAGE(blockHeaderFromFields.parentHash() == blockFromRlp.parentHash(), _testname + "parentHash in given RLP not matching the block parentHash!");
 	BOOST_CHECK_MESSAGE(blockHeaderFromFields.sha3Uncles() == blockFromRlp.sha3Uncles(), _testname + "sha3Uncles in given RLP not matching the block sha3Uncles!");
-	BOOST_CHECK_MESSAGE(blockHeaderFromFields.beneficiary() == blockFromRlp.beneficiary(), _testname + "beneficiary in given RLP not matching the block beneficiary!");
+	BOOST_CHECK_MESSAGE(blockHeaderFromFields.author() == blockFromRlp.author(), _testname + "author in given RLP not matching the block author!");
 	BOOST_CHECK_MESSAGE(blockHeaderFromFields.stateRoot() == blockFromRlp.stateRoot(), _testname + "stateRoot in given RLP not matching the block stateRoot!");
 	BOOST_CHECK_MESSAGE(blockHeaderFromFields.transactionsRoot() == blockFromRlp.transactionsRoot(), _testname + "transactionsRoot in given RLP not matching the block transactionsRoot!");
 	BOOST_CHECK_MESSAGE(blockHeaderFromFields.receiptsRoot() == blockFromRlp.receiptsRoot(), _testname + "receiptsRoot in given RLP not matching the block receiptsRoot!");

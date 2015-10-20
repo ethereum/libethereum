@@ -825,7 +825,7 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 			h256s alteredBlooms;
 			{
 				LogBloom blockBloom = tbi.logBloom();
-				blockBloom.shiftBloom<3>(sha3(tbi.beneficiary().ref()));
+				blockBloom.shiftBloom<3>(sha3(tbi.author().ref()));
 
 				// Pre-memoize everything we need before locking x_blocksBlooms
 				for (unsigned level = 0, index = (unsigned)tbi.number(); level < c_bloomIndexLevels; level++, index /= c_bloomIndexSize)

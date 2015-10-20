@@ -42,10 +42,10 @@ void mine(Client& c, int numBlocks)
 {
 	auto startBlock = c.blockChain().details().number;
 
-	c.startMining();
+	c.startSealing();
 	while(c.blockChain().details().number < startBlock + numBlocks)
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
-	c.stopMining();
+	c.stopSealing();
 }
 
 void connectClients(Client& c1, Client& c2)
@@ -180,7 +180,7 @@ void ImportTest::importEnv(json_spirit::mObject& _o)
 	m_envInfo.setDifficulty(toInt(_o["currentDifficulty"]));
 	m_envInfo.setNumber(toInt(_o["currentNumber"]));
 	m_envInfo.setTimestamp(toInt(_o["currentTimestamp"]));
-	m_envInfo.setBeneficiary(Address(_o["currentCoinbase"].get_str()));
+	m_envInfo.setAuthor(Address(_o["currentCoinbase"].get_str()));
 	m_envInfo.setLastHashes( lastHashes( m_envInfo.number() ) );
 }
 

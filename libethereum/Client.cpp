@@ -349,9 +349,9 @@ void Client::doneWorking()
 
 void Client::reopenChain(WithExisting _we)
 {
-	bool wasMining = isMining();
-	if (wasMining)
-		stopMining();
+	bool wasSealing = wouldSeal();
+	if (wasSealing)
+		stopSealing();
 	stopWorking();
 
 	m_tq.clear();
@@ -382,8 +382,8 @@ void Client::reopenChain(WithExisting _we)
 	doWork();
 
 	startWorking();
-	if (wasMining)
-		startMining();
+	if (wasSealing)
+		startSealing();
 }
 
 void Client::clearPending()
@@ -397,7 +397,7 @@ void Client::clearPending()
 			m_postMine = m_preMine;
 	}
 
-	startMining();
+	startSealing();
 	h256Hash changeds;
 	noteChanged(changeds);
 }
@@ -619,7 +619,7 @@ void Client::resyncStateFromChain()
 		// TODO: use m_postMine to avoid re-evaluating our own blocks.
 		preChanged = newPreMine.sync(bc());
 
-		if (preChanged || m_postMine.beneficiary() != m_preMine.beneficiary())
+		if (preChanged || m_postMine.author() != m_preMine.author())
 		{
 			if (isMining())
 				clog(ClientTrace) << "New block on chain.";
@@ -685,23 +685,23 @@ bool Client::remoteActive() const
 void Client::onPostStateChanged()
 {
 	clog(ClientTrace) << "Post state changed.";
-	rejigMining();
+	rejigSealing();
 	m_remoteWorking = false;
 }
 
-void Client::startMining()
+void Client::startSealing()
 {
-	clog(ClientNote) << "Mining Beneficiary: " << beneficiary();
-	if (beneficiary())
+	clog(ClientNote) << "Mining Beneficiary: " << author();
+	if (author())
 	{
 		m_wouldMine = true;
-		rejigMining();
+		rejigSealing();
 	}
 	else
-		clog(ClientNote) << "You need to set a beneficiary in order to mine!";
+		clog(ClientNote) << "You need to set a author in order to mine!";
 }
 
-void Client::rejigMining()
+void Client::rejigSealing()
 {
 	if ((wouldMine() || remoteActive()) && !isMajorSyncing() && (!isChainBad() || mineOnBadChain()) /*&& (forceMining() || transactionsWaiting())*/)
 	{

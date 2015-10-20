@@ -132,7 +132,7 @@ void TestBlock::mine(TestBlockChain const& bc)
 	FullBlockChain<Ethash> const& blockchain = bc.getInterface();
 
 	Block block = blockchain.genesisBlock(genesisDB);
-	block.setBeneficiary(genesisBlock.getBeneficiary());
+	block.setAuthor(genesisBlock.getBeneficiary());
 
 	//set some header data before mining from original blockheader
 	BlockInfo& blockInfo = *const_cast<BlockInfo*>(&block.info());
@@ -145,7 +145,7 @@ void TestBlock::mine(TestBlockChain const& bc)
 		if (m_premineUpdate.count("parentHash") > 0)
 			blockInfo.setParentHash(m_blockHeader.parentHash());
 		if (m_premineUpdate.count("coinbase") > 0)
-			blockInfo.setCoinbaseAddress(m_blockHeader.beneficiary());
+			blockInfo.setCoinbaseAddress(m_blockHeader.author());
 
 		if (m_premineUpdate.count("uncleHash") > 0 || m_premineUpdate.count("stateRoot") > 0 ||
 			m_premineUpdate.count("transactionsTrie") > 0 || m_premineUpdate.count("receiptTrie") > 0)

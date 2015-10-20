@@ -131,8 +131,8 @@ public:
 	// Sealing stuff:
 	// Note: "mining"/"miner" is deprecated. Use "sealing"/"sealer".
 
-	virtual Address beneficiary() const override { ReadGuard l(x_preMine); return m_preMine.beneficiary(); }
-	virtual void setBeneficiary(Address const& _us) override { WriteGuard l(x_preMine); m_preMine.setBeneficiary(_us); }
+	virtual Address author() const override { ReadGuard l(x_preMine); return m_preMine.author(); }
+	virtual void setAuthor(Address const& _us) override { WriteGuard l(x_preMine); m_preMine.setAuthor(_us); }
 
 	/// Type of sealers available for this seal engine.
 	strings sealers() const { return m_sealEngine->sealers(); }
@@ -145,8 +145,25 @@ public:
 	/// Set option for the sealer.
 	bool setSealOption(std::string const& _name, bytes const& _value) { auto ret = m_sealEngine->setOption(_name, _value); if (isMining()) startMining(); return ret; }
 
+	/// Start mining.
+	/// NOT thread-safe - call it & stopSealing only from a single thread
+	void startSealing() override;
+	/// Stop mining.
+	/// NOT thread-safe
+	void stopSealing() override { m_wouldMine = false; rejigSealing(); }
+	/// Are we mining now?
+	bool wouldSeal() const override { return m_wouldMine; }
+
+	// TODO: MOVE TO HIGHER "ETHEREUM" LEVEL
+
 	/// Enable/disable precomputing of the DAG for next epoch
 	void setShouldPrecomputeDAG(bool _precompute);
+	/// Are we mining now?
+	bool isMining() const override;
+	/// The hashrate...
+	u256 hashrate() const override;
+	/// Check the progress of the mining.
+	WorkingProgress miningProgress() const override;
 
 	/// Check to see if we should exit
 	static bool shouldExit() { return s_shouldExit; }
@@ -160,21 +177,6 @@ public:
 	/// @returns true if the canary says that the client should be upgraded.
 	bool isUpgradeNeeded() const;
 
-	/// Start mining.
-	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() override;
-	/// Stop mining.
-	/// NOT thread-safe
-	void stopMining() override { m_wouldMine = false; rejigMining(); }
-	/// Are we mining now?
-	bool isMining() const override;
-	/// Are we mining now?
-	bool wouldMine() const override { return m_wouldMine; }
-
-	/// The hashrate...
-	u256 hashrate() const override;
-	/// Check the progress of the mining.
-	WorkingProgress miningProgress() const override;
 
 	// Debug stuff:
 
@@ -254,7 +256,7 @@ protected:
 	void doneWorking() override;
 
 	/// Called when wouldMine(), turboMining(), isChainBad(), forceMining(), pendingTransactions() have changed.
-	void rejigMining();
+	void rejigSealing();
 
 	/// Called on chain changes
 	void onDeadBlocks(h256s const& _blocks, h256Hash& io_changed);
