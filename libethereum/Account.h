@@ -27,6 +27,7 @@
 #include <libdevcore/SHA3.h>
 #include <libethcore/Common.h>
 #include <libethcore/Params.h>
+#include <liblll/Compiler.h>
 
 namespace dev
 {
