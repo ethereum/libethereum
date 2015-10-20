@@ -38,14 +38,7 @@ namespace eth
 {
 
 /**
- * The proof of work algorithm base type.
- *
- * Must implement a basic templated interface, including:
- * typename Result
- * typename Solution
- * typename CPUMiner
- * typename GPUMiner
- * and a few others. TODO
+ * The Fluidity proof-of-authority blockchain consensus system.
  */
 class Fluidity
 {

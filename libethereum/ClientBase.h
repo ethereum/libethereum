@@ -184,8 +184,8 @@ protected:
 	virtual BlockChain& bc() = 0;
 	virtual BlockChain const& bc() const = 0;
 	virtual Block asOf(h256 const& _h) const = 0;
-	virtual Block preMine() const = 0;		// TODO: rename -> preSeal
-	virtual Block postMine() const = 0;		// TODO: rename -> postSeal
+	virtual Block preSeal() const = 0;
+	virtual Block postSeal() const = 0;
 	virtual void prepareForTransaction() = 0;
 	/// }
 

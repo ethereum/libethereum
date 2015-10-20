@@ -837,7 +837,7 @@ LastHashes lastHashes(u256 _currentBlockNumber)
 dev::eth::Ethash::BlockHeader constructHeader(
 	h256 const& _parentHash,
 	h256 const& _sha3Uncles,
-	Address const& _coinbaseAddress,
+	Address const& _author,
 	h256 const& _stateRoot,
 	h256 const& _transactionsRoot,
 	h256 const& _receiptsRoot,
@@ -852,7 +852,7 @@ dev::eth::Ethash::BlockHeader constructHeader(
 	RLPStream rlpStream;
 	rlpStream.appendList(Ethash::BlockHeader::Fields);
 
-	rlpStream << _parentHash << _sha3Uncles << _coinbaseAddress << _stateRoot << _transactionsRoot << _receiptsRoot << _logBloom
+	rlpStream << _parentHash << _sha3Uncles << _author << _stateRoot << _transactionsRoot << _receiptsRoot << _logBloom
 		<< _difficulty << _number << _gasLimit << _gasUsed << _timestamp << _extraData << h256{} << Nonce{};
 
 	return Ethash::BlockHeader(rlpStream.out(), CheckNothing, h256{}, HeaderData);

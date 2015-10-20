@@ -226,12 +226,6 @@ public:
 	/// Would we like to be sealing now?
 	virtual bool wouldSeal() const = 0;
 
-	// TODO: remove in favour of other API.
-	void startMining() { startSealing(); }
-	void stopMining() { stopSealing(); }
-	bool wouldMine() const { return wouldSeal(); }
-	Address account() const { return author(); }
-
 	// TODO: move to separate (higher level) interface
 	/// Current mining hash rate.
 	virtual u256 hashrate() const = 0;

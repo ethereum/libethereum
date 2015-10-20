@@ -48,7 +48,7 @@ void BlockInfo::clear()
 {
 	m_parentHash = h256();
 	m_sha3Uncles = EmptyListSHA3;
-	m_coinbaseAddress = Address();
+	m_author = Address();
 	m_stateRoot = EmptyTrie;
 	m_transactionsRoot = EmptyTrie;
 	m_receiptsRoot = EmptyTrie;
@@ -82,7 +82,7 @@ h256 const& BlockInfo::hashWithout() const
 
 void BlockInfo::streamRLPFields(RLPStream& _s) const
 {
-	_s	<< m_parentHash << m_sha3Uncles << m_coinbaseAddress << m_stateRoot << m_transactionsRoot << m_receiptsRoot << m_logBloom
+	_s	<< m_parentHash << m_sha3Uncles << m_author << m_stateRoot << m_transactionsRoot << m_receiptsRoot << m_logBloom
 		<< m_difficulty << m_number << m_gasLimit << m_gasUsed << m_timestamp << m_extraData;
 }
 
@@ -113,7 +113,7 @@ void BlockInfo::populateFromHeader(RLP const& _header, Strictness _s)
 	{
 		m_parentHash = _header[field = 0].toHash<h256>(RLP::VeryStrict);
 		m_sha3Uncles = _header[field = 1].toHash<h256>(RLP::VeryStrict);
-		m_coinbaseAddress = _header[field = 2].toHash<Address>(RLP::VeryStrict);
+		m_author = _header[field = 2].toHash<Address>(RLP::VeryStrict);
 		m_stateRoot = _header[field = 3].toHash<h256>(RLP::VeryStrict);
 		m_transactionsRoot = _header[field = 4].toHash<h256>(RLP::VeryStrict);
 		m_receiptsRoot = _header[field = 5].toHash<h256>(RLP::VeryStrict);

@@ -65,7 +65,7 @@ Network resetNetwork(Network _n)
 	c_gasLimitBoundDivisor = 1024;
 	c_minimumDifficulty = c_network == Network::Fluidity ? 0 : 131072;
 	c_difficultyBoundDivisor = 2048;
-	c_durationLimit = c_network == Network::Fluidity ? 0 : c_network == Network::Olympic ? 8 : 13;
+	c_durationLimit = c_network == Network::Fluidity ? 1 : c_network == Network::Olympic ? 8 : 13;
 	c_blockReward = c_network == Network::Fluidity ? 0 : c_network == Network::Olympic ? (1500 * finney) : (5 * ether);
 	c_accountStartNonce = c_network == Network::Morden ? u256(1) << 20 : 0;
 	return _n;
