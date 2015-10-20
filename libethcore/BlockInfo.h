@@ -97,7 +97,7 @@ public:
 	{
 		return m_parentHash == _cmp.parentHash() &&
 			m_sha3Uncles == _cmp.sha3Uncles() &&
-			m_coinbaseAddress == _cmp.beneficiary() &&
+			m_author == _cmp.author() &&
 			m_stateRoot == _cmp.stateRoot() &&
 			m_transactionsRoot == _cmp.transactionsRoot() &&
 			m_receiptsRoot == _cmp.receiptsRoot() &&
@@ -125,7 +125,7 @@ public:
 	void setParentHash(h256 const& _v) { m_parentHash = _v; noteDirty(); }
 	void setSha3Uncles(h256 const& _v) { m_sha3Uncles = _v; noteDirty(); }
 	void setTimestamp(u256 const& _v) { m_timestamp = _v; noteDirty(); }
-	void setCoinbaseAddress(Address const& _v) { m_coinbaseAddress = _v; noteDirty(); }
+	void setAuthor(Address const& _v) { m_author = _v; noteDirty(); }
 	void setRoots(h256 const& _t, h256 const& _r, h256 const& _u, h256 const& _s) { m_transactionsRoot = _t; m_receiptsRoot = _r; m_stateRoot = _s; m_sha3Uncles = _u; noteDirty(); }
 	void setGasUsed(u256 const& _v) { m_gasUsed = _v; noteDirty(); }
 	void setNumber(u256 const& _v) { m_number = _v; noteDirty(); }
@@ -134,7 +134,7 @@ public:
 	void setLogBloom(LogBloom const& _v) { m_logBloom = _v; noteDirty(); }
 	void setDifficulty(u256 const& _v) { m_difficulty = _v; noteDirty(); }
 
-	Address const& beneficiary() const { return m_coinbaseAddress; }
+	Address const& author() const { return m_author; }
 	h256 const& stateRoot() const { return m_stateRoot; }
 	h256 const& transactionsRoot() const { return m_transactionsRoot; }
 	h256 const& receiptsRoot() const { return m_receiptsRoot; }
@@ -162,7 +162,7 @@ protected:
 
 	h256 m_parentHash;
 	h256 m_sha3Uncles;
-	Address m_coinbaseAddress;
+	Address m_author;
 	h256 m_stateRoot;
 	h256 m_transactionsRoot;
 	h256 m_receiptsRoot;
@@ -182,7 +182,7 @@ private:
 
 inline std::ostream& operator<<(std::ostream& _out, BlockInfo const& _bi)
 {
-	_out << _bi.hashWithout() << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " " << _bi.beneficiary() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " " <<
+	_out << _bi.hashWithout() << " " << _bi.parentHash() << " " << _bi.sha3Uncles() << " " << _bi.author() << " " << _bi.stateRoot() << " " << _bi.transactionsRoot() << " " <<
 			_bi.receiptsRoot() << " " << _bi.logBloom() << " " << _bi.difficulty() << " " << _bi.number() << " " << _bi.gasLimit() << " " <<
 			_bi.gasUsed() << " " << _bi.timestamp();
 	return _out;

@@ -158,7 +158,7 @@ void checkCallCreates(eth::Transactions _resultCallCreates, eth::Transactions _e
 dev::eth::Ethash::BlockHeader constructHeader(
 	h256 const& _parentHash,
 	h256 const& _sha3Uncles,
-	Address const& _coinbaseAddress,
+	Address const& _author,
 	h256 const& _stateRoot,
 	h256 const& _transactionsRoot,
 	h256 const& _receiptsRoot,

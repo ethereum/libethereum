@@ -48,7 +48,8 @@ enum class Network
 {
 	Olympic = 0,
 	Frontier = 1,
-	Morden = 2
+	Morden = 2,
+	Fluidity = 69
 };
 extern Network c_network;
 

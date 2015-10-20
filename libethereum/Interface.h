@@ -210,27 +210,27 @@ public:
 	// Get the gas bidding price
 	virtual u256 gasBidPrice() const = 0;
 
-	// [MINING API]:
+	// [SEALING API]:
 
-	/// Set the coinbase address.
-	virtual void setBeneficiary(Address const& _us) = 0;
-	/// Get the coinbase address.
-	virtual Address beneficiary() const = 0;
+	/// Set the block author address.
+	virtual void setAuthor(Address const& _us) = 0;
+	/// Get the block author address.
+	virtual Address author() const = 0;
 
-	Address account() const { return beneficiary(); }	// TODO: REMOVE!!!
-
-	/// Start mining.
-	/// NOT thread-safe - call it & stopMining only from a single thread
-	virtual void startMining() = 0;
-	/// Stop mining.
+	/// Start sealing.
+	/// NOT thread-safe - call it & stopSealing only from a single thread
+	virtual void startSealing() = 0;
+	/// Stop sealing.
 	/// NOT thread-safe
-	virtual void stopMining() = 0;
-	/// Are we mining now?
-	virtual bool isMining() const = 0;
-	/// Would we like to mine now?
-	virtual bool wouldMine() const = 0;
-	/// Current hash rate.
+	virtual void stopSealing() = 0;
+	/// Would we like to be sealing now?
+	virtual bool wouldSeal() const = 0;
+
+	// TODO: move to separate (higher level) interface
+	/// Current mining hash rate.
 	virtual u256 hashrate() const = 0;
+	/// Are we sealing now?
+	virtual bool isMining() const = 0;
 
 	/// Get hash of the current block to be mined minus the nonce (the 'work hash').
 	virtual std::tuple<h256, h256, h256> getEthashWork() { BOOST_THROW_EXCEPTION(InterfaceNotSupported("Interface::getEthashWork")); }

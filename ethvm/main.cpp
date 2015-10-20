@@ -132,8 +132,8 @@ int main(int argc, char** argv)
 			value = u256(argv[++i]);
 		else if (arg == "--value" && i + 1 < argc)
 			value = u256(argv[++i]);
-		else if (arg == "--beneficiary" && i + 1 < argc)
-			envInfo.setBeneficiary(Address(argv[++i]));
+		else if (arg == "--author" && i + 1 < argc)
+			envInfo.setAuthor(Address(argv[++i]));
 		else if (arg == "--number" && i + 1 < argc)
 			envInfo.setNumber(u256(argv[++i]));
 		else if (arg == "--difficulty" && i + 1 < argc)

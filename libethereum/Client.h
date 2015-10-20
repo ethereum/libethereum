@@ -36,6 +36,7 @@
 #include <libethcore/Params.h>
 #include <libethcore/Sealer.h>
 #include <libethcore/ABI.h>
+#include <libfluidity/Fluidity.h>
 #include <libp2p/Common.h>
 #include "CanonBlockChain.h"
 #include "Block.h"
@@ -95,7 +96,7 @@ public:
 	ExecutionResult call(Address _dest, bytes const& _data = bytes(), u256 _gas = 125000, u256 _value = 0, u256 _gasPrice = 1 * ether, Address const& _from = Address());
 
 	/// Get the remaining gas limit in this block.
-	virtual u256 gasLimitRemaining() const override { return m_postMine.gasLimitRemaining(); }
+	virtual u256 gasLimitRemaining() const override { return m_postSeal.gasLimitRemaining(); }
 	/// Get the gas bid price
 	virtual u256 gasBidPrice() const override { return m_gp->bid(); }
 
@@ -110,7 +111,7 @@ public:
 	dev::eth::State state(unsigned _txi) const;
 
 	/// Get the object representing the current state of Ethereum.
-	dev::eth::Block postState() const { ReadGuard l(x_postMine); return m_postMine; }
+	dev::eth::Block postState() const { ReadGuard l(x_postSeal); return m_postSeal; }
 	/// Get the object representing the current canonical blockchain.
 	BlockChain const& blockChain() const { return bc(); }
 	/// Get some information on the block queue.
@@ -130,25 +131,40 @@ public:
 	// Sealing stuff:
 	// Note: "mining"/"miner" is deprecated. Use "sealing"/"sealer".
 
-	virtual Address beneficiary() const override { ReadGuard l(x_preMine); return m_preMine.beneficiary(); }
-	virtual void setBeneficiary(Address const& _us) override { WriteGuard l(x_preMine); m_preMine.setBeneficiary(_us); }
+	virtual Address author() const override { ReadGuard l(x_preSeal); return m_preSeal.author(); }
+	virtual void setAuthor(Address const& _us) override { WriteGuard l(x_preSeal); m_preSeal.setAuthor(_us); }
 
 	/// Type of sealers available for this seal engine.
 	strings sealers() const { return m_sealEngine->sealers(); }
 	/// Current sealer in use.
 	std::string sealer() const { return m_sealEngine->sealer(); }
 	/// Change sealer.
-	void setSealer(std::string const& _id) { m_sealEngine->setSealer(_id); if (isMining()) startMining(); }
+	void setSealer(std::string const& _id) { m_sealEngine->setSealer(_id); if (wouldSeal()) startSealing(); }
 	/// Review option for the sealer.
 	bytes sealOption(std::string const& _name) const { return m_sealEngine->option(_name); }
 	/// Set option for the sealer.
-	bool setSealOption(std::string const& _name, bytes const& _value) { auto ret = m_sealEngine->setOption(_name, _value); if (isMining()) startMining(); return ret; }
+	bool setSealOption(std::string const& _name, bytes const& _value) { auto ret = m_sealEngine->setOption(_name, _value); if (wouldSeal()) startSealing(); return ret; }
+
+	/// Start mining.
+	/// NOT thread-safe - call it & stopSealing only from a single thread
+	void startSealing() override;
+	/// Stop mining.
+	/// NOT thread-safe
+	void stopSealing() override { m_wouldMine = false; rejigSealing(); }
+	/// Are we mining now?
+	bool wouldSeal() const override { return m_wouldMine; }
+
+	// TODO: MOVE TO HIGHER "ETHEREUM" LEVEL
 
 	/// Enable/disable precomputing of the DAG for next epoch
 	void setShouldPrecomputeDAG(bool _precompute);
+	/// Are we mining now?
+	bool isMining() const override;
+	/// The hashrate...
+	u256 hashrate() const override;
+	/// Check the progress of the mining.
+	WorkingProgress miningProgress() const override;
 
-	/// Check to see if we should exit
-	static bool shouldExit() { return s_shouldExit; }
 	/// Check to see if we'd mine on an apparently bad chain.
 	bool mineOnBadChain() const { return m_mineOnBadChain; }
 	/// Set true if you want to mine even when the canary says you're on the wrong chain.
@@ -159,21 +175,6 @@ public:
 	/// @returns true if the canary says that the client should be upgraded.
 	bool isUpgradeNeeded() const;
 
-	/// Start mining.
-	/// NOT thread-safe - call it & stopMining only from a single thread
-	void startMining() override;
-	/// Stop mining.
-	/// NOT thread-safe
-	void stopMining() override { m_wouldMine = false; rejigMining(); }
-	/// Are we mining now?
-	bool isMining() const override;
-	/// Are we mining now?
-	bool wouldMine() const override { return m_wouldMine; }
-
-	/// The hashrate...
-	u256 hashrate() const override;
-	/// Check the progress of the mining.
-	WorkingProgress miningProgress() const override;
 
 	// Debug stuff:
 
@@ -222,8 +223,8 @@ protected:
 	/// Works properly with LatestBlock and PendingBlock.
 	using ClientBase::asOf;
 	virtual Block asOf(h256 const& _block) const override;
-	virtual Block preMine() const override { ReadGuard l(x_preMine); return m_preMine; }
-	virtual Block postMine() const override { ReadGuard l(x_postMine); return m_postMine; }
+	virtual Block preSeal() const override { ReadGuard l(x_preSeal); return m_preSeal; }
+	virtual Block postSeal() const override { ReadGuard l(x_postSeal); return m_postSeal; }
 	virtual void prepareForTransaction() override;
 
 	/// Collate the changed filters for the bloom filter of the given pending transaction.
@@ -253,7 +254,7 @@ protected:
 	void doneWorking() override;
 
 	/// Called when wouldMine(), turboMining(), isChainBad(), forceMining(), pendingTransactions() have changed.
-	void rejigMining();
+	void rejigSealing();
 
 	/// Called on chain changes
 	void onDeadBlocks(h256s const& _blocks, h256Hash& io_changed);
@@ -304,13 +305,13 @@ protected:
 	std::shared_ptr<GasPricer> m_gp;		///< The gas pricer.
 
 	OverlayDB m_stateDB;					///< Acts as the central point for the state database, so multiple States can share it.
-	mutable SharedMutex x_preMine;			///< Lock on m_preMine.
-	Block m_preMine;						///< The present state of the client.
-	mutable SharedMutex x_postMine;			///< Lock on m_postMine.
-	Block m_postMine;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
+	mutable SharedMutex x_preSeal;			///< Lock on m_preSeal.
+	Block m_preSeal;						///< The present state of the client.
+	mutable SharedMutex x_postSeal;			///< Lock on m_postSeal.
+	Block m_postSeal;						///< The state of the client which we're mining (i.e. it'll have all the rewards added).
 	mutable SharedMutex x_working;			///< Lock on m_working.
 	Block m_working;						///< The state of the client which we're mining (i.e. it'll have all the rewards added), while we're actually working on it.
-	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postMine).
+	BlockInfo m_miningInfo;					///< The header we're attempting to mine on (derived from m_postSeal).
 	bool remoteActive() const;				///< Is there an active and valid remote worker?
 	bool m_remoteWorking = false;			///< Has the remote worker recently been reset?
 	std::atomic<bool> m_needStateReset = { false };			///< Need reset working state to premin on next sync
@@ -326,7 +327,6 @@ protected:
 
 	bool m_wouldMine = false;				///< True if we /should/ be mining.
 	bool m_mineOnBadChain = false;			///< Mine even when the canary says it's a bad chain.
-	static bool s_shouldExit;				///< Exit requested?
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 											///< When did we last both doing GC on the watches?
@@ -375,7 +375,7 @@ protected:
 		Client(_gpForAdoption),
 		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
 	{
-		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
+		m_sealEngine = std::shared_ptr<SealEngineFace>(Sealer::createSealEngine());
 		m_sealEngine->onSealGenerated([=](bytes const& header){
 			this->submitSealed(header);
 		});

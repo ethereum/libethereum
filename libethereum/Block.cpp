@@ -44,7 +44,6 @@ using namespace dev;
 using namespace dev::eth;
 namespace fs = boost::filesystem;
 
-#define ctrace clog(BlockTrace)
 #define ETH_TIMED_ENACTMENTS 0
 
 static const unsigned c_maxSyncTransactions = 256;
@@ -54,9 +53,9 @@ const char* BlockDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* BlockTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
 const char* BlockChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
 
-Block::Block(OverlayDB const& _db, BaseState _bs, Address const& _coinbaseAddress):
+Block::Block(OverlayDB const& _db, BaseState _bs, Address const& _author):
 	m_state(_db, _bs),
-	m_beneficiary(_coinbaseAddress),
+	m_author(_author),
 	m_blockReward(c_blockReward)
 {
 	m_previousBlock.clear();
@@ -64,9 +63,9 @@ Block::Block(OverlayDB const& _db, BaseState _bs, Address const& _coinbaseAddres
 //	assert(m_state.root() == m_previousBlock.stateRoot());
 }
 
-Block::Block(OverlayDB const& _db, h256 const& _root, Address const& _coinbaseAddress):
+Block::Block(OverlayDB const& _db, h256 const& _root, Address const& _author):
 	m_state(_db, BaseState::PreExisting),
-	m_beneficiary(_coinbaseAddress),
+	m_author(_author),
 	m_blockReward(c_blockReward)
 {
 	m_state.setRoot(_root);
@@ -82,7 +81,7 @@ Block::Block(Block const& _s):
 	m_transactionSet(_s.m_transactionSet),
 	m_previousBlock(_s.m_previousBlock),
 	m_currentBlock(_s.m_currentBlock),
-	m_beneficiary(_s.m_beneficiary),
+	m_author(_s.m_author),
 	m_blockReward(_s.m_blockReward)
 {
 	m_precommit = m_state;
@@ -100,7 +99,7 @@ Block& Block::operator=(Block const& _s)
 	m_transactionSet = _s.m_transactionSet;
 	m_previousBlock = _s.m_previousBlock;
 	m_currentBlock = _s.m_currentBlock;
-	m_beneficiary = _s.m_beneficiary;
+	m_author = _s.m_author;
 	m_blockReward = _s.m_blockReward;
 
 	m_precommit = m_state;
@@ -114,7 +113,7 @@ void Block::resetCurrent()
 	m_receipts.clear();
 	m_transactionSet.clear();
 	m_currentBlock = BlockInfo();
-	m_currentBlock.setCoinbaseAddress(m_beneficiary);
+	m_currentBlock.setAuthor(m_author);
 	m_currentBlock.setTimestamp(max(m_previousBlock.timestamp() + 1, (u256)utcTime()));
 	m_currentBlock.populateFromParent(m_previousBlock);
 
@@ -147,7 +146,7 @@ PopulationStatistics Block::populateFromChain(BlockChain const& _bc, h256 const&
 		sync(_bc, bi.parentHash(), bip);
 
 		// 2. Enact the block's transactions onto this state.
-		m_beneficiary = bi.beneficiary();
+		m_author = bi.author();
 		Timer t;
 		auto vb = _bc.verifyBlock(&b, function<void(Exception&)>(), _ir | ImportRequirements::TransactionBasic);
 		ret.verify = t.elapsed();
@@ -338,6 +337,7 @@ pair<TransactionReceipts, bool> Block::sync(BlockChain const& _bc, TransactionQu
 					}
 					else
 					{
+						clog(StateTrace) << t.sha3() << "Temporarily no gas left in current block (txs gas > block's gas limit)";
 						// Temporarily no gas left in current block.
 						// OPTIMISE: could note this and then we don't evaluate until a block that does have the gas left.
 						// for now, just leave alone.
@@ -525,7 +525,7 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 
 				BlockInfo uncleParent;
 				if (!_bc.isKnown(uncle.parentHash()))
-					BOOST_THROW_EXCEPTION(UnknownParent());
+					BOOST_THROW_EXCEPTION(UnknownParent() << errinfo_hash256(uncle.parentHash()));
 				uncleParent = BlockInfo(_bc.block(uncle.parentHash()));
 
 				// m_currentBlock.number() - uncle.number()		m_cB.n - uP.n()
@@ -630,10 +630,10 @@ void Block::applyRewards(vector<BlockInfo> const& _uncleBlockHeaders)
 	u256 r = m_blockReward;
 	for (auto const& i: _uncleBlockHeaders)
 	{
-		m_state.addBalance(i.beneficiary(), m_blockReward * (8 + i.number() - m_currentBlock.number()) / 8);
+		m_state.addBalance(i.author(), m_blockReward * (8 + i.number() - m_currentBlock.number()) / 8);
 		r += m_blockReward / 32;
 	}
-	m_state.addBalance(m_currentBlock.beneficiary(), r);
+	m_state.addBalance(m_currentBlock.author(), r);
 }
 
 void Block::commitToSeal(BlockChain const& _bc, bytes const& _extraData)

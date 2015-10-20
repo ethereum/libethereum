@@ -422,7 +422,7 @@ void Executive::finalize()
 		m_s.addBalance(m_t.sender(), m_gas * m_t.gasPrice());
 
 		u256 feesEarned = (m_t.gas() - m_gas) * m_t.gasPrice();
-		m_s.addBalance(m_envInfo.beneficiary(), feesEarned);
+		m_s.addBalance(m_envInfo.author(), feesEarned);
 	}
 
 	// Suicides...

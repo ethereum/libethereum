@@ -113,7 +113,6 @@ public:
 	/// Use the default when you already have a database and you just want to make a State object
 	/// which uses it. If you have no preexisting database then set BaseState to something other
 	/// than BaseState::PreExisting in order to prepopulate the Trie.
-	/// You can also set the coinbase address.
 	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting);
 
 	/// Copy state object.
