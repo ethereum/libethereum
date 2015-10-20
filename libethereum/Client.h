@@ -165,8 +165,6 @@ public:
 	/// Check the progress of the mining.
 	WorkingProgress miningProgress() const override;
 
-	/// Check to see if we should exit
-	static bool shouldExit() { return s_shouldExit; }
 	/// Check to see if we'd mine on an apparently bad chain.
 	bool mineOnBadChain() const { return m_mineOnBadChain; }
 	/// Set true if you want to mine even when the canary says you're on the wrong chain.
@@ -329,7 +327,6 @@ protected:
 
 	bool m_wouldMine = false;				///< True if we /should/ be mining.
 	bool m_mineOnBadChain = false;			///< Mine even when the canary says it's a bad chain.
-	static bool s_shouldExit;				///< Exit requested?
 
 	mutable std::chrono::system_clock::time_point m_lastGarbageCollection;
 											///< When did we last both doing GC on the watches?

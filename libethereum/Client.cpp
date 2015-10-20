@@ -63,12 +63,6 @@ const char* ClientTrace::name() { return EthTeal "⧫" EthGray " ◎"; }
 const char* ClientDetail::name() { return EthTeal "⧫" EthCoal " ●"; }
 #endif
 
-bool Client::s_shouldExit = false;
-void Client::exitHandler(int)
-{
-	s_shouldExit = true;
-}
-
 static const Addresses c_canaries =
 {
 	Address("539dd9aaf45c3feb03f9c004f4098bd3268fef6b"),		// gav
