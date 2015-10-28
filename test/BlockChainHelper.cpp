@@ -129,7 +129,7 @@ void TestBlock::mine(TestBlockChain const& bc)
 	TestBlock const& genesisBlock = bc.getTestGenesis();
 	OverlayDB const& genesisDB = genesisBlock.getState().db();
 
-	FullBlockChain<Ethash> const& blockchain = bc.getInterface();
+	dev::test::TestBlockChain::FullBlockChainEthash const& blockchain = bc.getInterface();
 
 	Block block = blockchain.genesisBlock(genesisDB);
 	block.setBeneficiary(genesisBlock.getBeneficiary());
@@ -427,7 +427,7 @@ void TestBlockChain::addBlock(TestBlock const& _block)
 
 		//overwrite state in case _block had no State defined (e.x. created from RLP)
 		OverlayDB const& genesisDB = m_genesisBlock.getState().db();
-		FullBlockChain<Ethash> const& blockchain = getInterface();
+		FullBlockChainEthash const& blockchain = getInterface();
 		Block block = (blockchain.genesisBlock(genesisDB));
 		block.sync(blockchain);
 		m_lastBlock.setState(block.state());
@@ -441,7 +441,7 @@ vector<TestBlock> TestBlockChain::syncUncles(vector<TestBlock> const& uncles)
 		return validUncles;
 
 	BlockQueue uncleBlockQueue;
-	FullBlockChain<Ethash>& blockchain = *m_blockChain.get();
+	FullBlockChainEthash& blockchain = *m_blockChain.get();
 	uncleBlockQueue.setChain(blockchain);
 
 	for (size_t i = 0; i < uncles.size(); i++)
