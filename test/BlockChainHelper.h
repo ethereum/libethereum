@@ -25,6 +25,7 @@
 #include <libethereum/TransactionQueue.h>
 #include <libdevcore/TransientDirectory.h>
 #include <libethcore/Ethash.h>
+#include <libethereum/CanonBlockChain.h>
 
 using namespace std;
 using namespace json_spirit;
@@ -109,15 +110,14 @@ private:
 
 class TestBlockChain
 {
-private:
-	typedef FullBlockChain<Ethash> FullBlockChainEthash;
 public:
+	typedef FullBlockChain<Ethash> FullBlockChainEthash;
 	TestBlockChain(TestBlock const& _genesisBlock);	
 	void reset(TestBlock const& _genesisBlock);
 	void addBlock(TestBlock const& _block);
 	vector<TestBlock> syncUncles(vector<TestBlock> const& _uncles);
 	TestBlock const& getTopBlock() { return m_lastBlock; }
-	FullBlockChain<Ethash> const& getInterface() const { return *m_blockChain.get();}
+	FullBlockChainEthash const& getInterface() const { return *m_blockChain.get();}
 	TestBlock const& getTestGenesis() const { return m_genesisBlock; }
 	static TestBlock getDefaultGenesisBlock();
 
