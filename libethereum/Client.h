@@ -354,9 +354,10 @@ public:
 		p2p::Host* _host,
 		std::shared_ptr<GasPricer> _gpForAdoption,
 		std::string const& _dbPath = std::string(),
-		WithExisting _forceAction = WithExisting::Trust
+		WithExisting _forceAction = WithExisting::Trust,
+		unsigned const _blockDBPruning = 0
 	):
-		SpecialisedClient(_gpForAdoption, _dbPath, _forceAction)
+		SpecialisedClient(_gpForAdoption, _dbPath, _forceAction, _blockDBPruning)
 	{
 		init(_host, _dbPath, _forceAction, (int)c_network);
 	}
@@ -370,10 +371,11 @@ protected:
 	explicit SpecialisedClient(
 		std::shared_ptr<GasPricer> _gpForAdoption,
 		std::string const& _dbPath = std::string(),
-		WithExisting _forceAction = WithExisting::Trust
+		WithExisting _forceAction = WithExisting::Trust,
+		unsigned const _blockDBPruning = 0
 	):
 		Client(_gpForAdoption),
-		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; })
+		m_bc(_dbPath, _forceAction, [](unsigned d, unsigned t){ std::cerr << "REVISING BLOCKCHAIN: Processed " << d << " of " << t << "...\r"; }, _blockDBPruning)
 	{
 		m_sealEngine = std::shared_ptr<SealEngineFace>(Ethash::createSealEngine());
 		m_sealEngine->onSealGenerated([=](bytes const& header){
@@ -396,9 +398,10 @@ public:
 		p2p::Host* _host,
 		std::shared_ptr<GasPricer> _gpForAdoption,
 		std::string const& _dbPath = std::string(),
-		WithExisting _forceAction = WithExisting::Trust
+		WithExisting _forceAction = WithExisting::Trust,
+		unsigned const _blockDBPruning = 0
 	):
-		SpecialisedClient<Ethash>(_gpForAdoption, _dbPath, _forceAction)
+		SpecialisedClient<Ethash>(_gpForAdoption, _dbPath, _forceAction, _blockDBPruning)
 	{
 		init(_host, _dbPath, _forceAction, (int)c_network);
 	}

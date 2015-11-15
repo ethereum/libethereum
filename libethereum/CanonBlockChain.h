@@ -77,8 +77,8 @@ template <>
 class CanonBlockChain<Ethash>: public FullBlockChain<Ethash>
 {
 public:
-	CanonBlockChain(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback()): CanonBlockChain(std::string(), _we, _pc) {}
-	CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback());
+	CanonBlockChain(WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback(), unsigned const _pruning = 0): CanonBlockChain(std::string(), _we, _pc, _pruning) {}
+	CanonBlockChain(std::string const& _path, WithExisting _we = WithExisting::Trust, ProgressCallback const& _pc = ProgressCallback(), unsigned const _pruning = 0);
 	~CanonBlockChain() {}
 
 	/// Reopen everything.

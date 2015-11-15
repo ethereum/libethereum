@@ -148,8 +148,8 @@ static const unsigned c_minCacheSize = 1024 * 1024 * 32;
 
 #endif
 
-BlockChain::BlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path):
-	m_dbPath(_path)
+BlockChain::BlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, unsigned const _pruning):
+	m_dbPath(_path), m_pruning(_pruning)
 {
 	open(_genesisBlock, _genesisState, _path);
 }
@@ -725,12 +725,22 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 
 		blocksBatch.Put(toSlice(_block.info.hash()), ldb::Slice(_block.block));
+		if (m_pruning)
+			m_blocksDBDeathRow[_block.info.number()].insert(toSlice(_block.info.hash()).ToString());
 		DEV_READ_GUARDED(x_details)
 			extrasBatch.Put(toSlice(_block.info.parentHash(), ExtraDetails), (ldb::Slice)dev::ref(m_details[_block.info.parentHash()].rlp()));
+		if (m_pruning)
+			m_extrasDBDeathRow[_block.info.number()].insert(toSlice(_block.info.parentHash(), ExtraDetails).ToString());
 
 		extrasBatch.Put(toSlice(_block.info.hash(), ExtraDetails), (ldb::Slice)dev::ref(BlockDetails((unsigned)pd.number + 1, td, _block.info.parentHash(), {}).rlp()));
 		extrasBatch.Put(toSlice(_block.info.hash(), ExtraLogBlooms), (ldb::Slice)dev::ref(blb.rlp()));
 		extrasBatch.Put(toSlice(_block.info.hash(), ExtraReceipts), (ldb::Slice)dev::ref(br.rlp()));
+		if (m_pruning)
+		{
+			m_extrasDBDeathRow[_block.info.number()].insert(toSlice(_block.info.hash(), ExtraDetails).ToString());
+			m_extrasDBDeathRow[_block.info.number()].insert(toSlice(_block.info.hash(), ExtraLogBlooms).ToString());
+			m_extrasDBDeathRow[_block.info.number()].insert(toSlice(_block.info.hash(), ExtraReceipts).ToString());
+		}
 
 #if ETH_TIMED_IMPORTS || !ETH_TRUE
 		writing = t.elapsed();
@@ -830,14 +840,24 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 				TransactionAddress ta;
 				ta.blockHash = tbi.hash();
 				for (ta.index = 0; ta.index < blockRLP[1].itemCount(); ++ta.index)
+				{
 					extrasBatch.Put(toSlice(sha3(blockRLP[1][ta.index].data()), ExtraTransactionAddress), (ldb::Slice)dev::ref(ta.rlp()));
+					if (m_pruning)
+						m_extrasDBDeathRow[_block.info.number()].insert(toSlice(sha3(blockRLP[1][ta.index].data()), ExtraTransactionAddress).ToString());
+				}
 			}
 
 			// Update database with them.
 			ReadGuard l1(x_blocksBlooms);
 			for (auto const& h: alteredBlooms)
+			{
 				extrasBatch.Put(toSlice(h, ExtraBlocksBlooms), (ldb::Slice)dev::ref(m_blocksBlooms[h].rlp()));
+				if (m_pruning)
+					m_extrasDBDeathRow[_block.info.number()].insert(toSlice(h, ExtraBlocksBlooms).ToString());
+			}
 			extrasBatch.Put(toSlice(h256(tbi.number()), ExtraBlockHash), (ldb::Slice)dev::ref(BlockHash(tbi.hash()).rlp()));
+			if (m_pruning)
+				m_extrasDBDeathRow[_block.info.number()].insert(toSlice(h256(tbi.number()), ExtraBlockHash).ToString());
 		}
 
 		// FINALLY! change our best hash.
@@ -858,6 +878,18 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 	else
 	{
 		clog(BlockChainChat) << "   Imported but not best (oTD:" << details(last).totalDifficulty << " > TD:" << td << ")";
+	}
+
+	if (m_pruning)
+	{
+		// delete nodes from deathrow
+		for (auto const& i: m_blocksDBDeathRow[_block.info.number() - m_pruning])
+			blocksBatch.Delete(i);
+		m_blocksDBDeathRow.erase(_block.info.number() - m_pruning);
+
+		for (auto const& i: m_extrasDBDeathRow[_block.info.number() - m_pruning])
+			extrasBatch.Delete(i);
+		m_extrasDBDeathRow.erase(_block.info.number() - m_pruning);
 	}
 
 	ldb::Status o = m_blocksDB->Write(m_writeOptions, &blocksBatch);

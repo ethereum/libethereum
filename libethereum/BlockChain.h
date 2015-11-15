@@ -105,7 +105,7 @@ class BlockChain
 public:
 	/// Doesn't open the database - if you want it open it's up to you to subclass this and open it
 	/// in the constructor there.
-	BlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path);
+	BlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, unsigned const _pruning = 0);
 	~BlockChain();
 
 	/// Reopen everything.
@@ -396,6 +396,10 @@ protected:
 	std::string m_dbPath;
 
 	friend std::ostream& operator<<(std::ostream& _out, BlockChain const& _bc);
+private:
+	unsigned m_pruning;
+	std::unordered_map<u256, std::set<std::string> > m_blocksDBDeathRow;
+	std::unordered_map<u256, std::set<std::string> > m_extrasDBDeathRow;
 };
 
 template <class Sealer>
@@ -404,8 +408,8 @@ class FullBlockChain: public BlockChain
 public:
 	using BlockHeader = typename Sealer::BlockHeader;
 
-	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _pc = ProgressCallback()):
-		BlockChain(_genesisBlock, _genesisState, _path)
+	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, WithExisting _we, ProgressCallback const& _pc = ProgressCallback(), unsigned const _pruning = 0):
+		BlockChain(_genesisBlock, _genesisState, _path, _pruning)
 	{
 		openDatabase(_path, _we, _pc);
 	}
@@ -511,8 +515,8 @@ public:
 
 protected:
 	/// Constructor for derived classes to use when they'll open the chain db afterwards.
-	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path):
-		BlockChain(_genesisBlock, _genesisState, _path)
+	FullBlockChain(bytes const& _genesisBlock, AccountMap const& _genesisState, std::string const& _path, unsigned const _pruning = 0):
+		BlockChain(_genesisBlock, _genesisState, _path, _pruning)
 	{}
 };
 

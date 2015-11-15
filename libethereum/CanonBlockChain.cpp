@@ -46,8 +46,8 @@ bytes CanonBlockChain<Ethash>::s_genesisExtraData;
 u256 CanonBlockChain<Ethash>::s_genesisDifficulty;
 u256 CanonBlockChain<Ethash>::s_genesisGasLimit;
 
-CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc):
-	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path)
+CanonBlockChain<Ethash>::CanonBlockChain(std::string const& _path, WithExisting _we, ProgressCallback const& _pc, unsigned const _pruning):
+	FullBlockChain<Ethash>(createGenesisBlock(), createGenesisState(), _path, _pruning)
 {
 	BlockChain::openDatabase(_path, _we, _pc);
 }
