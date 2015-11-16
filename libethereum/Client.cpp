@@ -395,6 +395,8 @@ void Client::clearPending()
 		if (!m_postMine.pending().size())
 			return;
 		m_tq.clear();
+		DEV_WRITE_GUARDED(x_preMine)
+			m_preMine.sync(bc());
 		DEV_READ_GUARDED(x_preMine)
 			m_postMine = m_preMine;
 	}
@@ -615,6 +617,8 @@ void Client::resyncStateFromChain()
 	{
 		bool preChanged = false;
 		Block newPreMine;
+		DEV_WRITE_GUARDED(x_preMine)
+			m_preMine.sync(bc());
 		DEV_READ_GUARDED(x_preMine)
 			newPreMine = m_preMine;
 
@@ -652,6 +656,8 @@ void Client::resyncStateFromChain()
 
 void Client::resetState()
 {
+	DEV_WRITE_GUARDED(x_preMine)
+		m_preMine.sync(bc());
 	Block newPreMine;
 	DEV_READ_GUARDED(x_preMine)
 		newPreMine = m_preMine;

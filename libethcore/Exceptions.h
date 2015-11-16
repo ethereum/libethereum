@@ -30,6 +30,7 @@ namespace eth
 {
 
 // information to add to exceptions
+using errinfo_address = boost::error_info<struct tag_address, Address>;
 using errinfo_name = boost::error_info<struct tag_field, std::string>;
 using errinfo_field = boost::error_info<struct tag_field, int>;
 using errinfo_data = boost::error_info<struct tag_data, std::string>;

@@ -217,7 +217,6 @@ bool Block::sync(BlockChain const& _bc, h256 const& _block, BlockInfo const& _bi
 		// New blocks available, or we've switched to a different branch. All change.
 		// Find most recent state dump and replay what's left.
 		// (Most recent state dump might end up being genesis.)
-
 		if (m_state.db().lookup(bi.stateRoot()).empty())	// TODO: API in State for this?
 		{
 			cwarn << "Unable to sync to" << bi.hash() << "; state root" << bi.stateRoot() << "not found in database.";
@@ -586,7 +585,19 @@ u256 Block::enact(VerifiedBlockRef const& _block, BlockChain const& _bc)
 
 	// Commit all cached state changes to the state trie.
 	DEV_TIMED_ABOVE("commit", 500)
-		m_state.commit();
+	{
+		try
+		{
+			m_state.commit();
+		}
+		catch (Exception const& _e)
+		{
+			_e << errinfo_currentNumber(this->info().number()) << errinfo_block(this->blockData());
+			cwarn << " Failed to commit enact block\n Roll back" << boost::diagnostic_information(_e);
+			m_state.db().rollback();
+			throw;
+		}
+	}
 
 	// Hash the state trie and check against the state_root hash in m_currentBlock.
 	if (m_currentBlock.stateRoot() != m_previousBlock.stateRoot() && m_currentBlock.stateRoot() != rootHash())
@@ -805,7 +816,44 @@ void Block::cleanup(bool _fullCommit)
 			throw;
 		}
 
-		m_state.db().commit();	// TODO: State API for this?
+		m_state.db().commit(m_currentBlock.number());	// TODO: State API for this?
+
+		try
+		{
+			if (m_currentBlock.number() % Defaults::statePruning() == 0)
+				mutableState().getState().leftOvers();
+		}
+		catch(Exception _e)
+		{
+			cwarn << "BAD TRIE in state: " << boost::diagnostic_information(_e);
+		}
+		catch(...)
+		{
+			cwarn << "BAD TRIE in state";
+		}
+
+		try
+		{
+			if (m_currentBlock.number() % Defaults::statePruning() == 0)
+			{
+				for (auto const& i: mutableState().getTouchedAccounts())
+				{
+					if (mutableState().storageRoot(i) != EmptyTrie)
+					{
+						SecureTrieDB<h256, OverlayDB> storageDB(mutableState().getState().db(), mutableState().storageRoot(i)); // mutableState().m_state.db()
+						storageDB.leftOvers();
+					}
+				}
+			}
+		}
+		catch(Exception _e)
+		{
+			cwarn << "BAD TRIE in storage tree: " << boost::diagnostic_information(_e);
+		}
+		catch(...)
+		{
+			cwarn << "BAD TRIE in storage tree";
+		}
 
 		if (isChannelVisible<StateTrace>()) // Avoid calling toHex if not needed
 			clog(StateTrace) << "Committed: stateRoot" << m_currentBlock.stateRoot() << "=" << rootHash() << "=" << toHex(asBytes(db().lookup(rootHash())));

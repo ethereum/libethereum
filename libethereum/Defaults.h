@@ -37,11 +37,16 @@ public:
 	Defaults();
 
 	static Defaults* get() { if (!s_this) s_this = new Defaults; return s_this; }
+
 	static void setDBPath(std::string const& _dbPath) { get()->m_dbPath = _dbPath; }
 	static std::string const& dbPath() { return get()->m_dbPath; }
 
+	static void setStatePruning(unsigned const& _statePruning) { get()->m_statePruning = _statePruning; }
+	static unsigned const& statePruning() { return get()->m_statePruning; }
+
 private:
 	std::string m_dbPath;
+	unsigned m_statePruning;
 
 	static Defaults* s_this;
 };

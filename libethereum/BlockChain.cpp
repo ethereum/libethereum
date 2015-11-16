@@ -738,9 +738,9 @@ ImportRoute BlockChain::import(VerifiedBlockRef const& _block, OverlayDB const& 
 #endif
 	}
 #if ETH_CATCH
-	catch (BadRoot& ex)
+	catch (DBException& ex)
 	{
-		cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << "needed root" << ex.root;
+		cwarn << "*** BadRoot error! Trying to import" << _block.info.hash() << boost::diagnostic_information(ex);
 		cwarn << _block.info;
 		// Attempt in import later.
 		BOOST_THROW_EXCEPTION(TransientError());
@@ -1404,7 +1404,7 @@ Block BlockChain::genesisBlock(OverlayDB const& _db) const
 		return Block(_db, r);
 	Block ret(_db, BaseState::Empty);
 	dev::eth::commit(m_genesisState, ret.mutableState().m_state);		// bit horrible. maybe consider a better way of constructing it?
-	ret.mutableState().db().commit();									// have to use this db() since it's the one that has been altered with the above commit.
+	ret.mutableState().db().commit(0);									// have to use this db() since it's the one that has been altered with the above commit.
 	ret.m_previousBlock = BlockInfo(m_genesisBlock);
 	ret.resetCurrent();
 	return ret;
