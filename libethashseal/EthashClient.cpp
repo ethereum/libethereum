@@ -128,11 +128,7 @@ u256 EthashClient::externalHashrate() const
 			if (chrono::steady_clock::now() - i->second.second > chrono::seconds(5))
 				i = m_externalRates.erase(i);
 			else
-			{
-				i++;
-				if (i != m_externalRates.end())
-					ret += i->second.first;
-			}
+					ret += i++->second.first;
 	}
 	return ret;
 }
