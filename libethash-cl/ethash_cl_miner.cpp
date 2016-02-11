@@ -197,24 +197,29 @@ bool ethash_cl_miner::configureGPU(
 	s_extraRequiredGPUMem = _extraGPUMemory;
 	// by default let's only consider the DAG of the first epoch
 	uint64_t dagSize = ethash_get_datasize(_currentBlock);
-	uint64_t requiredSize =  dagSize + _extraGPUMemory;
-	return searchForAllDevices(_platformId, [&requiredSize](cl::Device const& _device) -> bool
+	uint64_t requiredSize = dagSize + _extraGPUMemory;
+	uint64_t requiredAllocSize = dagSize;
+	return searchForAllDevices(_platformId, [&requiredSize, &requiredAllocSize](cl::Device const& _device) -> bool
 		{
-			cl_ulong result;
-			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &result);
-			if (result >= requiredSize)
+			cl_ulong max_alloc, total_memory;
+			_device.getInfo(CL_DEVICE_GLOBAL_MEM_SIZE, &total_memory);
+			_device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &max_alloc);
+			if ((max_alloc >= requiredAllocSize) && (total_memory >= requiredSize))
 			{
 				ETHCL_LOG(
 					"Found suitable OpenCL device [" << _device.getInfo<CL_DEVICE_NAME>()
-					<< "] with " << result << " bytes of GPU memory"
+					<< "] with " << total_memory << " bytes of GPU memory"
+					<< " supporting a max alloc of " << max_alloc << " bytes"
 				);
 				return true;
 			}
 
 			ETHCL_LOG(
 				"OpenCL device " << _device.getInfo<CL_DEVICE_NAME>()
-				<< " has insufficient GPU memory." << result <<
-				" bytes of memory found < " << requiredSize << " bytes of memory required"
+				<< " has insufficient GPU memory. " << total_memory
+				<< " bytes of memory found with a max alloc of " << max_alloc << " bytes. "
+				<< requiredSize << " bytes of memory with a max alloc of "
+				<<  requiredAllocSize << " bytes required"
 			);
 			return false;
 		}
