@@ -33,6 +33,18 @@ namespace eth
 {
 class PasswordUnknown: public Exception {};
 
+enum class PasswordValidation
+{
+	Valid,
+	Empty,
+	TooShort,
+	NotEqual
+};
+
+std::string errorDescription(PasswordValidation _validation);
+
+PasswordValidation validatePassword(std::string const& _s1, std::string const& _s2);
+
 struct KeyInfo
 {
 	KeyInfo() = default;
@@ -101,6 +113,8 @@ public:
 	std::string const& passwordHint(Address const& _address) const;
 	/// Should be called to change password
 	void changeName(Address const& _address, std::string const& _name);
+	/// Should be called to validate password
+	bool validatePassword(Address const& _address, std::string const& _name);
 
 	/// @returns true if the given address has a key (UUID) associated with it. Equivalent to !!uuid(_a)
 	/// If the address has no key, it could be a brain wallet.
