@@ -42,8 +42,6 @@ using namespace boost::algorithm;
 
 #undef RETURN
 
-class BadArgument: public Exception {};
-
 string getAccountPassword(KeyManager& keyManager, Address const& a)
 {
 	return getPassword("Enter passphrase for address " + keyManager.accountName(a) + " (" + a.abridged() + "; hint:" + keyManager.passwordHint(a) + "): ");
@@ -117,6 +115,47 @@ public:
 	};
 
 	KeyCLI(OperationMode _mode = OperationMode::None): m_mode(_mode) {}
+
+	bool interpretLightOption(int& i, int argc, char** argv)
+	{
+		string arg = argv[i];
+		if (arg == "wallet" && i + 1 < argc)
+		{
+			string subOption = argv[++i];
+			if (subOption == "import" && i + 2 < argc)
+			{
+				m_mode = OperationMode::ImportPresale;
+				m_inputs = strings(1, argv[++i]);
+				m_name = argv[++i];
+			}
+			else streamLightHelp(cout);
+		}
+		else if (arg == "account" && i + 1 < argc)
+		{
+			string subOption = argv[++i];
+			if (subOption == "list")
+				m_mode = OperationMode::List;
+			else if (subOption == "new" && i + 1 < argc)
+			{
+				m_mode = OperationMode::New;
+				m_name = argv[++i];
+			}
+			else if (subOption == "import" && i + 2 < argc)
+			{
+				m_mode = OperationMode::ImportBare;
+				m_inputs = strings(1, argv[++i]);
+				m_name = argv[++i];
+			}
+			else if (subOption == "update")
+				m_mode = OperationMode::RecodeBare;
+			else streamLightHelp(cout);
+		}
+		else if (m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ImportBare)
+			m_inputs.push_back(arg);
+		else
+			return false;
+		return true;
+	}
 
 	bool interpretOption(int& i, int argc, char** argv)
 	{
@@ -281,6 +320,8 @@ public:
 			m_mode = OperationMode::Kill;
 		else if (arg == "--no-icap")
 			m_icap = false;
+		else if (arg == "--help")
+			streamHelp(cout);
 		else if (m_mode == OperationMode::DecodeTx || m_mode == OperationMode::Inspect || m_mode == OperationMode::Kill || m_mode == OperationMode::SignTx || m_mode == OperationMode::ImportBare || m_mode == OperationMode::InspectBare || m_mode == OperationMode::KillBare || m_mode == OperationMode::Recode || m_mode == OperationMode::Export || m_mode == OperationMode::RecodeBare || m_mode == OperationMode::ExportBare)
 			m_inputs.push_back(arg);
 		else
@@ -547,7 +588,7 @@ public:
 		case OperationMode::RecodeBare:
 			for (auto const& i: m_inputs)
 				if (h128 u = fromUUID(i))
-					if (secretStore().recode(u, lockPassword(toUUID(u)), [&](){ return getPassword("Enter passphrase for key " + toUUID(u) + ": "); }, kdf()))
+					if (secretStore().recode(u, lockPassword(toUUID(u)), [&](){ return getPassword("Enter the current passphrase for key " + toUUID(u) + ": "); }, kdf()))
 						cerr << "Re-encoded " << toUUID(u) << endl;
 					else
 						cerr << "Couldn't re-encode " << toUUID(u) << "; key corrupt or incorrect passphrase supplied." << endl;
@@ -741,6 +782,17 @@ public:
 	std::string lockPassword(std::string const& _accountName)
 	{
 		return m_lock.empty() ? createPassword("Enter a passphrase with which to secure account " + _accountName + ": ") : m_lock;
+	}
+
+	static void streamLightHelp(ostream& _out)
+	{
+		_out
+			<< "	account list  List all keys available in wallet." << endl
+			<< "	account new <name>  Create a new key with given name and add it in the wallet." << endl
+			<< "	account update [ <uuid>|<file> , ... ]  Decrypt and re-encrypt given keys." << endl
+			<< "	account import [ <file>|<secret-hex> , ... ] Import keys from given sources." << endl
+			<< "	wallet import <file> <name>  Import a presale wallet into a key with the given name." << endl
+			   ;
 	}
 
 	static void streamHelp(ostream& _out)
