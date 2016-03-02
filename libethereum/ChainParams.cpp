@@ -34,6 +34,18 @@ using namespace dev;
 using namespace eth;
 namespace js = json_spirit;
 
+
+ChainParams::ChainParams()
+{
+	for (unsigned i = 1; i <= 4; ++i)
+		genesisState[Address(i)] = Account(0, 1);
+	// Setup default precompiled contracts as equal to genesis of Frontier.
+	precompiled.insert(make_pair(Address(1), PrecompiledContract(3000, 0, PrecompiledRegistrar::executor("ecrecover"))));
+	precompiled.insert(make_pair(Address(2), PrecompiledContract(60, 12, PrecompiledRegistrar::executor("sha256"))));
+	precompiled.insert(make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"))));
+	precompiled.insert(make_pair(Address(4), PrecompiledContract(15, 3, PrecompiledRegistrar::executor("identity"))));
+}
+
 ChainParams::ChainParams(string const& _json, h256 const& _stateRoot)
 {
 	*this = loadConfig(_json, _stateRoot);
@@ -70,7 +82,7 @@ ChainParams ChainParams::loadGenesisState(string const& _json, unordered_map<Add
 	ChainParams cp(*this);
 	cp.precompiled = _precompiled;
 	cp.genesisState = jsonToAccountMap(_json, nullptr, &cp.precompiled);
-	cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot();
+	cp.stateRoot = _stateRoot ? _stateRoot : cp.calculateStateRoot(true);
 	return cp;
 }
 
@@ -131,6 +143,8 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
 	for (unsigned i = BlockHeader::BasicFields; i < r[0].itemCount(); ++i)
 		sealRLP += r[0][i].data();
 
+	calculateStateRoot(true);
+
 	auto b = genesisBlock();
 	if (b != _genesisRLP)
 	{
@@ -142,12 +156,12 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
 	}
 }
 
-h256 ChainParams::calculateStateRoot() const
+h256 ChainParams::calculateStateRoot(bool _force) const
 {
 	MemoryDB db;
 	SecureTrieDB<Address, MemoryDB> state(&db);
 	state.init();
-	if (!stateRoot)
+	if (!stateRoot || _force)
 	{
 		// TODO: use hash256
 		//stateRoot = hash256(toBytesMap(gs));

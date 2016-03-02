@@ -36,7 +36,7 @@ class SealEngineFace;
 
 struct ChainParams: public ChainOperationParams
 {
-	ChainParams() = default;
+	ChainParams();
 	ChainParams(ChainParams const& _org) = default;
 	ChainParams(std::string const& _s, h256 const& _stateRoot = h256());
 	ChainParams(bytes const& _genesisRLP, AccountMap const& _state) { populateFromGenesis(_genesisRLP, _state); }
@@ -58,7 +58,7 @@ struct ChainParams: public ChainOperationParams
 	unsigned sealFields = 0;
 	bytes sealRLP;
 
-	h256 calculateStateRoot() const;
+	h256 calculateStateRoot(bool _force = false) const;
 
 	/// Genesis block info.
 	bytes genesisBlock() const;
