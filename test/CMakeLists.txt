@@ -41,6 +41,9 @@ add_executable(${EXECUTABLE} ${SRC_LIST} ${HEADERS})
 
 eth_use(${EXECUTABLE} REQUIRED Eth::ethashseal Eth::ethereum Eth::testutils)
 target_link_libraries(${EXECUTABLE} ${Boost_UNIT_TEST_FRAMEWORK_LIBRARIES})
+if (WIN32)
+	target_link_libraries(${EXECUTABLE} shlwapi)
+endif()
 
 enable_testing()
 set(CTEST_OUTPUT_ON_FAILURE TRUE)
