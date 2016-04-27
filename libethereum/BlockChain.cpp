@@ -218,6 +218,21 @@ unsigned BlockChain::open(std::string const& _path, WithExisting _we)
 	ldb::Options o;
 	o.create_if_missing = true;
 	o.max_open_files = 256;
+
+	#if defined(_WIN32)
+	if (boost::filesystem::exists(chainPath + "/blocks/LOCK") ||
+		boost::filesystem::exists(extrasPath + "/extras/LOCK"))
+	{
+		cwarn <<
+			"Database " <<
+			(chainPath + "/blocks") <<
+			"or " <<
+			(extrasPath + "/extras") <<
+			"already open. You appear to have another instance of ethereum running. Bailing.";
+		BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
+	}
+	#endif
+
 	ldb::DB::Open(o, chainPath + "/blocks", &m_blocksDB);
 	ldb::DB::Open(o, extrasPath + "/extras", &m_extrasDB);
 	if (!m_blocksDB || !m_extrasDB)
