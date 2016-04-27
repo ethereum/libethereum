@@ -27,12 +27,11 @@
 #include "TransactionReceipt.h"
 
 #ifdef __INTEL_COMPILER
-#pragma warning(disable:1098) //the qualifier on this friend declaration is ignored
+#pragma warning(disable : 1098)  // the qualifier on this friend declaration is ignored
 #endif
 
 namespace dev
 {
-
 namespace eth
 {
 class LogFilter;
@@ -40,7 +39,6 @@ class LogFilter;
 
 namespace eth
 {
-
 /// Simple stream output for the StateDiff.
 std::ostream& operator<<(std::ostream& _out, dev::eth::LogFilter const& _s);
 
@@ -50,7 +48,10 @@ class Block;
 class LogFilter
 {
 public:
-	LogFilter(h256 _earliest = EarliestBlockHash, h256 _latest = PendingBlockHash): m_earliest(_earliest), m_latest(_latest) {}
+	LogFilter(h256 _earliest = EarliestBlockHash, h256 _latest = PendingBlockHash)
+		: m_earliest(_earliest), m_latest(_latest)
+	{
+	}
 
 	void streamRLP(RLPStream& _s) const;
 	h256 sha3() const;
@@ -73,10 +74,26 @@ public:
 	bool matches(Block const& _b, unsigned _i) const;
 	LogEntries matches(TransactionReceipt const& _r) const;
 
-	LogFilter address(Address _a) { m_addresses.insert(_a); return *this; }
-	LogFilter topic(unsigned _index, h256 const& _t) { if (_index < 4) m_topics[_index].insert(_t); return *this; }
-	LogFilter withEarliest(h256 _e) { m_earliest = _e; return *this; }
-	LogFilter withLatest(h256 _e) { m_latest = _e; return *this; }
+	LogFilter address(Address _a)
+	{
+		m_addresses.insert(_a);
+		return *this;
+	}
+	LogFilter topic(unsigned _index, h256 const& _t)
+	{
+		if (_index < 4) m_topics[_index].insert(_t);
+		return *this;
+	}
+	LogFilter withEarliest(h256 _e)
+	{
+		m_earliest = _e;
+		return *this;
+	}
+	LogFilter withLatest(h256 _e)
+	{
+		m_latest = _e;
+		return *this;
+	}
 
 	friend std::ostream& dev::eth::operator<<(std::ostream& _out, dev::eth::LogFilter const& _s);
 
@@ -86,7 +103,5 @@ private:
 	h256 m_earliest = EarliestBlockHash;
 	h256 m_latest = PendingBlockHash;
 };
-
 }
-
 }

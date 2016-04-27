@@ -38,10 +38,11 @@ using namespace dev;
 using namespace dev::eth;
 using namespace p2p;
 
-unsigned const EthereumHost::c_oldProtocolVersion = 62; //TODO: remove this once v63+ is common
+unsigned const EthereumHost::c_oldProtocolVersion = 62;  // TODO: remove this once v63+ is common
 static unsigned const c_maxSendTransactions = 256;
 
-char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"NotSynced", "Idle", "Waiting", "Blocks", "State", "NewBlocks" };
+char const* const EthereumHost::s_stateNames[static_cast<int>(SyncState::Size)] = {"NotSynced", "Idle",  "Waiting",
+																				   "Blocks",	"State", "NewBlocks"};
 
 #if defined(_WIN32)
 const char* EthereumHostTrace::name() { return EthPurple "^" EthGray "  "; }
@@ -49,22 +50,24 @@ const char* EthereumHostTrace::name() { return EthPurple "^" EthGray "  "; }
 const char* EthereumHostTrace::name() { return EthPurple "⧫" EthGray " "; }
 #endif
 
-EthereumHost::EthereumHost(BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq, u256 _networkId):
-	HostCapability<EthereumPeer>(),
-	Worker		("ethsync"),
-	m_chain		(_ch),
-	m_db(_db),
-	m_tq		(_tq),
-	m_bq		(_bq),
-	m_networkId	(_networkId)
+EthereumHost::EthereumHost(BlockChain const& _ch, OverlayDB const& _db, TransactionQueue& _tq, BlockQueue& _bq,
+						   u256 _networkId)
+	: HostCapability<EthereumPeer>(),
+	  Worker("ethsync"),
+	  m_chain(_ch),
+	  m_db(_db),
+	  m_tq(_tq),
+	  m_bq(_bq),
+	  m_networkId(_networkId)
 {
 	m_latestBlockSent = _ch.currentHash();
-	m_tq.onImport([this](ImportResult _ir, h256 const& _h, h512 const& _nodeId) { onTransactionImported(_ir, _h, _nodeId); });
+	m_tq.onImport([this](ImportResult _ir, h256 const& _h, h512 const& _nodeId)
+				  {
+					  onTransactionImported(_ir, _h, _nodeId);
+				  });
 }
 
-EthereumHost::~EthereumHost()
-{
-}
+EthereumHost::~EthereumHost() {}
 
 bool EthereumHost::ensureInitialised()
 {
@@ -84,8 +87,7 @@ bool EthereumHost::ensureInitialised()
 void EthereumHost::reset()
 {
 	RecursiveGuard l(x_sync);
-	if (m_sync)
-		m_sync->abortSync();
+	if (m_sync) m_sync->abortSync();
 	m_sync.reset();
 	m_syncStart = 0;
 
@@ -98,7 +100,9 @@ void EthereumHost::doWork()
 {
 	bool netChange = ensureInitialised();
 	auto h = m_chain.currentHash();
-	// If we've finished our initial sync (including getting all the blocks into the chain so as to reduce invalid transactions), start trading transactions & blocks
+	// If we've finished our initial sync (including getting all the blocks into
+	// the chain so as to reduce invalid
+	// transactions), start trading transactions & blocks
 	if (!isSyncing() && m_chain.isKnown(m_latestBlockSent))
 	{
 		if (m_newTransactions)
@@ -113,29 +117,33 @@ void EthereumHost::doWork()
 		}
 	}
 
-	time_t  now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+	time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
 	if (now - m_lastTick >= 1)
 	{
 		m_lastTick = now;
-		foreachPeer([](std::shared_ptr<EthereumPeer> _p) { _p->tick(); return true; });
+		foreachPeer([](std::shared_ptr<EthereumPeer> _p)
+					{
+						_p->tick();
+						return true;
+					});
 	}
 
 	if (m_syncStart)
 	{
 		DEV_RECURSIVE_GUARDED(x_sync)
-			if (!m_sync)
+		if (!m_sync)
+		{
+			time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
+			if (now - m_syncStart > 10)
 			{
-				time_t now = std::chrono::system_clock::to_time_t(chrono::system_clock::now());
-				if (now - m_syncStart > 10)
-				{
-					m_sync.reset(new BlockChainSync(*this));
-					m_syncStart = 0;
-					m_sync->restartSync();
-				}
+				m_sync.reset(new BlockChainSync(*this));
+				m_syncStart = 0;
+				m_sync->restartSync();
 			}
+		}
 	}
 
-//	return netChange;
+	//	return netChange;
 	// TODO: Figure out what to do with netChange.
 	(void)netChange;
 }
@@ -151,74 +159,81 @@ void EthereumHost::maintainTransactions()
 		{
 			auto const& t = ts[i];
 			bool unsent = !m_transactionsSent.count(t.sha3());
-			auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p) { return p->m_requireTransactions || (unsent && !p->m_knownTransactions.count(t.sha3())); }));
-			for (auto const& p: peers)
-				peerTransactions[p].push_back(i);
+			auto peers = get<1>(randomSelection(0, [&](EthereumPeer* p)
+												{
+													return p->m_requireTransactions ||
+														   (unsent && !p->m_knownTransactions.count(t.sha3()));
+												}));
+			for (auto const& p : peers) peerTransactions[p].push_back(i);
 		}
-		for (auto const& t: ts)
-			m_transactionsSent.insert(t.sha3());
+		for (auto const& t : ts) m_transactionsSent.insert(t.sha3());
 	}
 	foreachPeer([&](shared_ptr<EthereumPeer> _p)
-	{
-		bytes b;
-		unsigned n = 0;
-		for (auto const& i: peerTransactions[_p])
-		{
-			_p->m_knownTransactions.insert(ts[i].sha3());
-			b += ts[i].rlp();
-			++n;
-		}
+				{
+					bytes b;
+					unsigned n = 0;
+					for (auto const& i : peerTransactions[_p])
+					{
+						_p->m_knownTransactions.insert(ts[i].sha3());
+						b += ts[i].rlp();
+						++n;
+					}
 
-		_p->clearKnownTransactions();
+					_p->clearKnownTransactions();
 
-		if (n || _p->m_requireTransactions)
-		{
-			RLPStream ts;
-			_p->prep(ts, TransactionsPacket, n).appendRaw(b, n);
-			_p->sealAndSend(ts);
-			clog(EthereumHostTrace) << "Sent" << n << "transactions to " << _p->session()->info().clientVersion;
-		}
-		_p->m_requireTransactions = false;
-		return true;
-	});
+					if (n || _p->m_requireTransactions)
+					{
+						RLPStream ts;
+						_p->prep(ts, TransactionsPacket, n).appendRaw(b, n);
+						_p->sealAndSend(ts);
+						clog(EthereumHostTrace) << "Sent" << n << "transactions to "
+												<< _p->session()->info().clientVersion;
+					}
+					_p->m_requireTransactions = false;
+					return true;
+				});
 }
 
 void EthereumHost::foreachPeer(std::function<bool(std::shared_ptr<EthereumPeer>)> const& _f) const
 {
-	//order peers by protocol, rating, connection age
+	// order peers by protocol, rating, connection age
 	auto sessions = peerSessions();
-	auto sessionLess = [](std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>> const& _left, std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>> const& _right)
-		{ return _left.first->rating() == _right.first->rating() ? _left.first->connectionTime() < _right.first->connectionTime() : _left.first->rating() > _right.first->rating(); };
+	auto sessionLess = [](std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>> const& _left,
+						  std::pair<std::shared_ptr<Session>, std::shared_ptr<Peer>> const& _right)
+	{
+		return _left.first->rating() == _right.first->rating()
+				   ? _left.first->connectionTime() < _right.first->connectionTime()
+				   : _left.first->rating() > _right.first->rating();
+	};
 
 	std::sort(sessions.begin(), sessions.end(), sessionLess);
-	for (auto s: sessions)
-		if (!_f(s.first->cap<EthereumPeer>()))
-			return;
+	for (auto s : sessions)
+		if (!_f(s.first->cap<EthereumPeer>())) return;
 
-	sessions = peerSessions(c_oldProtocolVersion); //TODO: remove once v61+ is common
+	sessions = peerSessions(c_oldProtocolVersion);  // TODO: remove once v61+ is common
 	std::sort(sessions.begin(), sessions.end(), sessionLess);
-	for (auto s: sessions)
-		if (!_f(s.first->cap<EthereumPeer>(c_oldProtocolVersion)))
-			return;
+	for (auto s : sessions)
+		if (!_f(s.first->cap<EthereumPeer>(c_oldProtocolVersion))) return;
 }
 
-tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<Session>>> EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
+tuple<vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<EthereumPeer>>, vector<shared_ptr<Session>>>
+EthereumHost::randomSelection(unsigned _percent, std::function<bool(EthereumPeer*)> const& _allow)
 {
 	vector<shared_ptr<EthereumPeer>> chosen;
 	vector<shared_ptr<EthereumPeer>> allowed;
 	vector<shared_ptr<Session>> sessions;
-	
+
 	size_t peerCount = 0;
 	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
-	{
-		if (_allow(_p.get()))
-		{
-			allowed.push_back(_p);
-			sessions.push_back(_p->session());
-		}
-		++peerCount;
-		return true;
-	});
+				{
+					if (_allow(_p.get()))
+					{
+						allowed.push_back(_p);
+						sessions.push_back(_p->session());
+					}
+					++peerCount;
+					return true;
+				});
 
 	size_t chosenSize = (peerCount * _percent + 99) / 100;
 	chosen.reserve(chosenSize);
@@ -240,31 +255,36 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 	{
 		if (diff(detailsFrom.number, detailsTo.number) < 20)
 		{
-			// don't be sending more than 20 "new" blocks. if there are any more we were probably waaaay behind.
-			clog(EthereumHostTrace) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent << ")";
+			// don't be sending more than 20 "new" blocks. if there are any more we
+			// were probably waaaay behind.
+			clog(EthereumHostTrace) << "Sending a new block (current is" << _currentHash << ", was" << m_latestBlockSent
+									<< ")";
 
 			h256s blocks = get<0>(m_chain.treeRoute(m_latestBlockSent, _currentHash, false, false, true));
 
-			auto s = randomSelection(25, [&](EthereumPeer* p){
-				DEV_GUARDED(p->x_knownBlocks)
-					return !p->m_knownBlocks.count(_currentHash);
-				return false;
-			});
-			for (shared_ptr<EthereumPeer> const& p: get<0>(s))
-				for (auto const& b: blocks)
+			auto s = randomSelection(25, [&](EthereumPeer* p)
+									 {
+										 DEV_GUARDED(p->x_knownBlocks)
+										 return !p->m_knownBlocks.count(_currentHash);
+										 return false;
+									 });
+			for (shared_ptr<EthereumPeer> const& p : get<0>(s))
+				for (auto const& b : blocks)
 				{
 					RLPStream ts;
-					p->prep(ts, NewBlockPacket, 2).appendRaw(m_chain.block(b), 1).append(m_chain.details(b).totalDifficulty);
+					p->prep(ts, NewBlockPacket, 2)
+						.appendRaw(m_chain.block(b), 1)
+						.append(m_chain.details(b).totalDifficulty);
 
 					Guard l(p->x_knownBlocks);
 					p->sealAndSend(ts);
 					p->m_knownBlocks.clear();
 				}
-			for (shared_ptr<EthereumPeer> const& p: get<1>(s))
+			for (shared_ptr<EthereumPeer> const& p : get<1>(s))
 			{
 				RLPStream ts;
 				p->prep(ts, NewBlockHashesPacket, blocks.size());
-				for (auto const& b: blocks)
+				for (auto const& b : blocks)
 				{
 					ts.appendList(2);
 					ts.append(b);
@@ -282,16 +302,14 @@ void EthereumHost::maintainBlocks(h256 const& _currentHash)
 
 BlockChainSync* EthereumHost::sync()
 {
-	if (m_sync)
-		return m_sync.get(); // We only chose sync strategy once
+	if (m_sync) return m_sync.get();  // We only chose sync strategy once
 
 	bool pv63 = false;
 	foreachPeer([&](std::shared_ptr<EthereumPeer> _p)
-	{
-		if (_p->m_protocolVersion == protocolVersion())
-			pv63 = true;
-		return !pv63;
-	});
+				{
+					if (_p->m_protocolVersion == protocolVersion()) pv63 = true;
+					return !pv63;
+				});
 	if (pv63)
 	{
 		m_syncStart = 0;
@@ -357,7 +375,8 @@ void EthereumHost::onPeerBlockBodies(std::shared_ptr<EthereumPeer> _peer, RLP co
 	}
 }
 
-void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer, std::vector<std::pair<h256, u256>> const& _hashes)
+void EthereumHost::onPeerNewHashes(std::shared_ptr<EthereumPeer> _peer,
+								   std::vector<std::pair<h256, u256>> const& _hashes)
 {
 	RecursiveGuard l(x_sync);
 	if (sync())
@@ -405,8 +424,7 @@ void EthereumHost::onPeerAborting()
 	RecursiveGuard l(x_sync);
 	try
 	{
-		if (m_sync)
-			m_sync->onPeerAborting();
+		if (m_sync) m_sync->onPeerAborting();
 	}
 	catch (Exception&)
 	{
@@ -416,47 +434,43 @@ void EthereumHost::onPeerAborting()
 
 bool EthereumHost::isSyncing() const
 {
-	if (!m_sync)
-		return false;
+	if (!m_sync) return false;
 	return m_sync->isSyncing();
 }
 
 SyncStatus EthereumHost::status() const
 {
 	RecursiveGuard l(x_sync);
-	if (!m_sync)
-		return SyncStatus();
+	if (!m_sync) return SyncStatus();
 	return m_sync->status();
 }
 
 void EthereumHost::onTransactionImported(ImportResult _ir, h256 const& _h, h512 const& _nodeId)
 {
 	auto session = host()->peerSession(_nodeId);
-	if (!session)
-		return;
+	if (!session) return;
 
 	std::shared_ptr<EthereumPeer> peer = session->cap<EthereumPeer>();
-	if (!peer)
-		peer = session->cap<EthereumPeer>(c_oldProtocolVersion);
-	if (!peer)
-		return;
+	if (!peer) peer = session->cap<EthereumPeer>(c_oldProtocolVersion);
+	if (!peer) return;
 
 	Guard l(peer->x_knownTransactions);
 	peer->m_knownTransactions.insert(_h);
 	switch (_ir)
 	{
-	case ImportResult::Malformed:
-		peer->addRating(-100);
-		break;
-	case ImportResult::AlreadyKnown:
-		// if we already had the transaction, then don't bother sending it on.
-		DEV_GUARDED(x_transactions)
+		case ImportResult::Malformed:
+			peer->addRating(-100);
+			break;
+		case ImportResult::AlreadyKnown:
+			// if we already had the transaction, then don't bother sending it on.
+			DEV_GUARDED(x_transactions)
 			m_transactionsSent.insert(_h);
-		peer->addRating(0);
-		break;
-	case ImportResult::Success:
-		peer->addRating(100);
-		break;
-	default:;
+			peer->addRating(0);
+			break;
+		case ImportResult::Success:
+			peer->addRating(100);
+			break;
+		default:
+			;
 	}
 }

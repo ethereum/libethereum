@@ -31,13 +31,11 @@
 
 namespace dev
 {
-
 namespace eth
 {
-
 struct InstalledFilter
 {
-	InstalledFilter(LogFilter const& _f): filter(_f) {}
+	InstalledFilter(LogFilter const& _f) : filter(_f) {}
 
 	LogFilter filter;
 	unsigned refCount = 1;
@@ -52,31 +50,52 @@ static const LocalisedLogEntry InitialChange(SpecialLogEntry);
 
 struct ClientWatch
 {
-	ClientWatch(): lastPoll(std::chrono::system_clock::now()) {}
-	explicit ClientWatch(h256 _id, Reaping _r): id(_id), lastPoll(_r == Reaping::Automatic ? std::chrono::system_clock::now() : std::chrono::system_clock::time_point::max()) {}
+	ClientWatch() : lastPoll(std::chrono::system_clock::now()) {}
+	explicit ClientWatch(h256 _id, Reaping _r)
+		: id(_id),
+		  lastPoll(_r == Reaping::Automatic ? std::chrono::system_clock::now()
+											: std::chrono::system_clock::time_point::max())
+	{
+	}
 
 	h256 id;
 #if INITIAL_STATE_AS_CHANGES
-	LocalisedLogEntries changes = LocalisedLogEntries{ InitialChange };
+	LocalisedLogEntries changes = LocalisedLogEntries{InitialChange};
 #else
 	LocalisedLogEntries changes;
 #endif
 	mutable std::chrono::system_clock::time_point lastPoll = std::chrono::system_clock::now();
 };
 
-struct WatchChannel: public LogChannel { static const char* name(); static const int verbosity = 7; };
+struct WatchChannel : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 7;
+};
 #define cwatch LogOutputStream<WatchChannel, true>()
-struct WorkInChannel: public LogChannel { static const char* name(); static const int verbosity = 16; };
-struct WorkOutChannel: public LogChannel { static const char* name(); static const int verbosity = 16; };
-struct WorkChannel: public LogChannel { static const char* name(); static const int verbosity = 21; };
+struct WorkInChannel : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 16;
+};
+struct WorkOutChannel : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 16;
+};
+struct WorkChannel : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 21;
+};
 #define cwork LogOutputStream<WorkChannel, true>()
 #define cworkin LogOutputStream<WorkInChannel, true>()
 #define cworkout LogOutputStream<WorkOutChannel, true>()
 
-class ClientBase: public Interface
+class ClientBase : public Interface
 {
 public:
-	ClientBase(TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024}): m_tq(_l) {}
+	ClientBase(TransactionQueue::Limits const& _l = TransactionQueue::Limits{1024, 1024}) : m_tq(_l) {}
 	virtual ~ClientBase() {}
 
 	/// Submits the given transaction.
@@ -85,16 +104,24 @@ public:
 	using Interface::submitTransaction;
 
 	/// Makes the given call. Nothing is recorded into the state.
-	virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
+	virtual ExecutionResult call(Address const& _secret, u256 _value, Address _dest, bytes const& _data, u256 _gas,
+								 u256 _gasPrice, BlockNumber _blockNumber,
+								 FudgeFactor _ff = FudgeFactor::Strict) override;
 	using Interface::call;
 
 	/// Makes the given create. Nothing is recorded into the state.
-	virtual ExecutionResult create(Address const& _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice, BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
+	virtual ExecutionResult create(Address const& _secret, u256 _value, bytes const& _data, u256 _gas, u256 _gasPrice,
+								   BlockNumber _blockNumber, FudgeFactor _ff = FudgeFactor::Strict) override;
 
 	/// Estimate gas usage for call/create.
-	/// @param _maxGas An upper bound value for estimation, if not provided default value of c_maxGasEstimate will be used.
+	/// @param _maxGas An upper bound value for estimation, if not provided
+	/// default value of c_maxGasEstimate will be
+	/// used.
 	/// @param _callback Optional callback function for progress reporting
-	virtual std::pair<u256, ExecutionResult> estimateGas(Address const& _from, u256 _value, Address _dest, bytes const& _data, u256 _maxGas, u256 _gasPrice, BlockNumber _blockNumber, GasEstimationCallback const& _callback) override;
+	virtual std::pair<u256, ExecutionResult> estimateGas(Address const& _from, u256 _value, Address _dest,
+														 bytes const& _data, u256 _maxGas, u256 _gasPrice,
+														 BlockNumber _blockNumber,
+														 GasEstimationCallback const& _callback) override;
 
 	using Interface::create;
 
@@ -114,7 +141,8 @@ public:
 
 	virtual LocalisedLogEntries logs(unsigned _watchId) const override;
 	virtual LocalisedLogEntries logs(LogFilter const& _filter) const override;
-	virtual void prependLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity, LocalisedLogEntries& io_logs) const;
+	virtual void prependLogsFromBlock(LogFilter const& _filter, h256 const& _blockHash, BlockPolarity _polarity,
+									  LocalisedLogEntries& io_logs) const;
 
 	/// Install, uninstall and query watches.
 	virtual unsigned installWatch(LogFilter const& _filter, Reaping _r = Reaping::Automatic) override;
@@ -149,7 +177,11 @@ public:
 
 	virtual EVMSchedule evmSchedule() const override { return sealEngine()->evmSchedule(EnvInfo(pendingInfo())); }
 
-	virtual ImportResult injectTransaction(bytes const& _rlp, IfDropped _id = IfDropped::Ignore) override { prepareForTransaction(); return m_tq.import(_rlp, _id); }
+	virtual ImportResult injectTransaction(bytes const& _rlp, IfDropped _id = IfDropped::Ignore) override
+	{
+		prepareForTransaction();
+		return m_tq.import(_rlp, _id);
+	}
 	virtual ImportResult injectBlock(bytes const& _block) override;
 
 	using Interface::diff;
@@ -173,7 +205,10 @@ public:
 	virtual void stopSealing() override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::stopSealing")); }
 	virtual bool wouldSeal() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::wouldSeal")); }
 
-	virtual SyncStatus syncStatus() const override { BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::syncStatus")); }
+	virtual SyncStatus syncStatus() const override
+	{
+		BOOST_THROW_EXCEPTION(InterfaceNotSupported("ClientBase::syncStatus"));
+	}
 
 	Block asOf(BlockNumber _h) const;
 
@@ -188,14 +223,16 @@ protected:
 	virtual void prepareForTransaction() = 0;
 	/// }
 
-	TransactionQueue m_tq;							///< Maintains a list of incoming transactions not yet in a block on the blockchain.
+	TransactionQueue m_tq;  ///< Maintains a list of incoming transactions not yet
+	/// in a block on the blockchain.
 
 	// filters
-	mutable Mutex x_filtersWatches;							///< Our lock.
-	std::unordered_map<h256, InstalledFilter> m_filters;	///< The dictionary of filters that are active.
-	std::unordered_map<h256, h256s> m_specialFilters = std::unordered_map<h256, std::vector<h256>>{{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
-															///< The dictionary of special filters and their additional data
-	std::map<unsigned, ClientWatch> m_watches;				///< Each and every watch - these reference a filter.
+	mutable Mutex x_filtersWatches;						  ///< Our lock.
+	std::unordered_map<h256, InstalledFilter> m_filters;  ///< The dictionary of filters that are active.
+	std::unordered_map<h256, h256s> m_specialFilters =
+		std::unordered_map<h256, std::vector<h256>>{{PendingChangedFilter, {}}, {ChainChangedFilter, {}}};
+	///< The dictionary of special filters and their additional data
+	std::map<unsigned, ClientWatch> m_watches;  ///< Each and every watch - these reference a filter.
 };
-
-}}
+}
+}

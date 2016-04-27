@@ -50,23 +50,22 @@ const char* StateDetail::name() { return EthViolet "⚙" EthWhite " ◌"; }
 const char* StateTrace::name() { return EthViolet "⚙" EthGray " ◎"; }
 const char* StateChat::name() { return EthViolet "⚙" EthWhite " ◌"; }
 
-State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs):
-	m_db(_db),
-	m_state(&m_db),
-	m_accountStartNonce(_accountStartNonce)
+State::State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs)
+	: m_db(_db), m_state(&m_db), m_accountStartNonce(_accountStartNonce)
 {
 	if (_bs != BaseState::PreExisting)
-		// Initialise to the state entailed by the genesis block; this guarantees the trie is built correctly.
+		// Initialise to the state entailed by the genesis block; this guarantees
+		// the trie is built correctly.
 		m_state.init();
 	paranoia("end of normal construction.", true);
 }
 
-State::State(State const& _s):
-	m_db(_s.m_db),
-	m_state(&m_db, _s.m_state.root(), Verification::Skip),
-	m_cache(_s.m_cache),
-	m_touched(_s.m_touched),
-	m_accountStartNonce(_s.m_accountStartNonce)
+State::State(State const& _s)
+	: m_db(_s.m_db),
+	  m_state(&m_db, _s.m_state.root(), Verification::Skip),
+	  m_cache(_s.m_cache),
+	  m_touched(_s.m_touched),
+	  m_accountStartNonce(_s.m_accountStartNonce)
 {
 	paranoia("after state cloning (copy cons).", true);
 }
@@ -94,16 +93,16 @@ OverlayDB State::openDB(std::string const& _basePath, h256 const& _genesisHash, 
 	{
 		if (boost::filesystem::space(path + "/state").available < 1024)
 		{
-			cwarn << "Not enough available space found on hard drive. Please free some up and then re-run. Bailing.";
+			cwarn << "Not enough available space found on hard drive. Please free "
+					 "some up and then re-run. Bailing.";
 			BOOST_THROW_EXCEPTION(NotEnoughAvailableSpace());
 		}
 		else
 		{
 			cwarn << status.ToString();
-			cwarn <<
-				"Database " <<
-				(path + "/state") <<
-				"already open. You appear to have another instance of ethereum running. Bailing.";
+			cwarn << "Database " << (path + "/state")
+				  << "already open. You appear to have another instance of ethereum "
+					 "running. Bailing.";
 			BOOST_THROW_EXCEPTION(DatabaseAlreadyOpen());
 		}
 	}
@@ -120,8 +119,7 @@ void State::populateFrom(AccountMap const& _map)
 
 u256 const& State::requireAccountStartNonce() const
 {
-	if (m_accountStartNonce == Invalid256)
-		BOOST_THROW_EXCEPTION(InvalidAccountStartNonceInState());
+	if (m_accountStartNonce == Invalid256) BOOST_THROW_EXCEPTION(InvalidAccountStartNonceInState());
 	return m_accountStartNonce;
 }
 
@@ -136,8 +134,11 @@ void State::noteAccountStartNonce(u256 const& _actual)
 void State::paranoia(std::string const& _when, bool _enforceRefs) const
 {
 #if ETH_PARANOIA && !ETH_FATDB
-	// TODO: variable on context; just need to work out when there should be no leftovers
-	// [in general this is hard since contract alteration will result in nodes in the DB that are no directly part of the state DB].
+	// TODO: variable on context; just need to work out when there should be no
+	// leftovers
+	// [in general this is hard since contract alteration will result in nodes in
+	// the DB that are no directly part of
+	// the state DB].
 	if (!isTrieGood(_enforceRefs, false))
 	{
 		cwarn << "BAD TRIE" << _when;
@@ -151,8 +152,7 @@ void State::paranoia(std::string const& _when, bool _enforceRefs) const
 
 State& State::operator=(State const& _s)
 {
-	if (&_s == this)
-		return *this;
+	if (&_s == this) return *this;
 
 	m_db = _s.m_db;
 	m_state.open(&m_db, _s.m_state.root(), Verification::Skip);
@@ -182,26 +182,23 @@ StateDiff State::diff(State const& _c, bool _quick) const
 	}
 	else
 	{
-		for (auto const& i: trie)
-			ads.insert(i.first), trieAds.insert(i.first);
-		for (auto const& i: trieD)
-			ads.insert(i.first), trieAdsD.insert(i.first);
+		for (auto const& i : trie) ads.insert(i.first), trieAds.insert(i.first);
+		for (auto const& i : trieD) ads.insert(i.first), trieAdsD.insert(i.first);
 	}
 
-	for (auto const& i: m_cache)
-		ads.insert(i.first);
-	for (auto const& i: _c.m_cache)
-		ads.insert(i.first);
+	for (auto const& i : m_cache) ads.insert(i.first);
+	for (auto const& i : _c.m_cache) ads.insert(i.first);
 
-	for (auto const& i: ads)
+	for (auto const& i : ads)
 	{
 		auto it = m_cache.find(i);
 		auto itD = _c.m_cache.find(i);
-		CachedAddressState source(trieAds.count(i) ? trie.at(i) : "", it != m_cache.end() ? &it->second : nullptr, &m_db);
-		CachedAddressState dest(trieAdsD.count(i) ? trieD.at(i) : "", itD != _c.m_cache.end() ? &itD->second : nullptr, &_c.m_db);
+		CachedAddressState source(trieAds.count(i) ? trie.at(i) : "", it != m_cache.end() ? &it->second : nullptr,
+								  &m_db);
+		CachedAddressState dest(trieAdsD.count(i) ? trieD.at(i) : "", itD != _c.m_cache.end() ? &itD->second : nullptr,
+								&_c.m_db);
 		AccountDiff acd = source.diff(dest);
-		if (acd.changed())
-			ret.accounts[i] = acd;
+		if (acd.changed()) ret.accounts[i] = acd;
 	}
 
 	return ret;
@@ -212,26 +209,28 @@ void State::ensureCached(Address const& _a, bool _requireCode, bool _forceCreate
 	ensureCached(m_cache, _a, _requireCode, _forceCreate);
 }
 
-void State::ensureCached(std::unordered_map<Address, Account>& _cache, const Address& _a, bool _requireCode, bool _forceCreate) const
+void State::ensureCached(std::unordered_map<Address, Account>& _cache, const Address& _a, bool _requireCode,
+						 bool _forceCreate) const
 {
 	auto it = _cache.find(_a);
 	if (it == _cache.end())
 	{
 		// populate basic info.
 		string stateBack = m_state.at(_a);
-		if (stateBack.empty() && !_forceCreate)
-			return;
+		if (stateBack.empty() && !_forceCreate) return;
 		RLP state(stateBack);
 		Account s;
 		if (state.isNull())
 			s = Account(requireAccountStartNonce(), 0, Account::NormalCreation);
 		else
-			s = Account(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(), state[3].toHash<h256>(), Account::Unchanged);
+			s = Account(state[0].toInt<u256>(), state[1].toInt<u256>(), state[2].toHash<h256>(),
+						state[3].toHash<h256>(), Account::Unchanged);
 		bool ok;
 		tie(it, ok) = _cache.insert(make_pair(_a, s));
 	}
 	if (_requireCode && it != _cache.end() && !it->second.isFreshCode() && !it->second.codeCacheValid())
-		it->second.noteCode(it->second.codeHash() == EmptySHA3 ? bytesConstRef() : bytesConstRef(m_db.lookup(it->second.codeHash())));
+		it->second.noteCode(it->second.codeHash() == EmptySHA3 ? bytesConstRef()
+															   : bytesConstRef(m_db.lookup(it->second.codeHash())));
 }
 
 void State::commit()
@@ -244,12 +243,10 @@ unordered_map<Address, u256> State::addresses() const
 {
 #if ETH_FATDB
 	unordered_map<Address, u256> ret;
-	for (auto i: m_cache)
-		if (i.second.isAlive())
-			ret[i.first] = i.second.balance();
-	for (auto const& i: m_state)
-		if (m_cache.find(i.first) == m_cache.end())
-			ret[i.first] = RLP(i.second)[1].toInt<u256>();
+	for (auto i : m_cache)
+		if (i.second.isAlive()) ret[i.first] = i.second.balance();
+	for (auto const& i : m_state)
+		if (m_cache.find(i.first) == m_cache.end()) ret[i.first] = RLP(i.second)[1].toInt<u256>();
 	return ret;
 #else
 	BOOST_THROW_EXCEPTION(InterfaceNotSupported("State::addresses()"));
@@ -259,7 +256,7 @@ unordered_map<Address, u256> State::addresses() const
 void State::setRoot(h256 const& _r)
 {
 	m_cache.clear();
-//	m_touched.clear();
+	//	m_touched.clear();
 	m_state.setRoot(_r);
 	paranoia("begin setRoot", true);
 }
@@ -268,8 +265,7 @@ bool State::addressInUse(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
-	if (it == m_cache.end())
-		return false;
+	if (it == m_cache.end()) return false;
 	return true;
 }
 
@@ -277,8 +273,7 @@ bool State::addressHasCode(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
-	if (it == m_cache.end())
-		return false;
+	if (it == m_cache.end()) return false;
 	return it->second.isFreshCode() || it->second.codeHash() != EmptySHA3;
 }
 
@@ -286,8 +281,7 @@ u256 State::balance(Address const& _id) const
 {
 	ensureCached(_id, false, false);
 	auto it = m_cache.find(_id);
-	if (it == m_cache.end())
-		return 0;
+	if (it == m_cache.end()) return 0;
 	return it->second.balance();
 }
 
@@ -358,16 +352,15 @@ u256 State::storage(Address const& _id, u256 const& _memory) const
 	auto it = m_cache.find(_id);
 
 	// Account doesn't exist - exit now.
-	if (it == m_cache.end())
-		return 0;
+	if (it == m_cache.end()) return 0;
 
 	// See if it's in the account's storage cache.
 	auto mit = it->second.storageOverlay().find(_memory);
-	if (mit != it->second.storageOverlay().end())
-		return mit->second;
+	if (mit != it->second.storageOverlay().end()) return mit->second;
 
 	// Not in the storage cache - go to the DB.
-	SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());			// promise we won't change the overlay! :)
+	SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db),
+										it->second.baseRoot());  // promise we won't change the overlay! :)
 	string payload = memdb.at(_memory);
 	u256 ret = payload.size() ? RLP(payload).toInt<u256>() : 0;
 	it->second.setStorage(_memory, ret);
@@ -385,13 +378,13 @@ unordered_map<u256, u256> State::storage(Address const& _id) const
 		// Pull out all values from trie storage.
 		if (it->second.baseRoot())
 		{
-			SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db), it->second.baseRoot());		// promise we won't alter the overlay! :)
-			for (auto const& i: memdb)
-				ret[i.first] = RLP(i.second).toInt<u256>();
+			SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&m_db),
+												it->second.baseRoot());  // promise we won't alter the overlay! :)
+			for (auto const& i : memdb) ret[i.first] = RLP(i.second).toInt<u256>();
 		}
 
 		// Then merge cached storage over the top.
-		for (auto const& i: it->second.storageOverlay())
+		for (auto const& i : it->second.storageOverlay())
 			if (i.second)
 				ret[i.first] = i.second;
 			else
@@ -413,25 +406,21 @@ h256 State::storageRoot(Address const& _id) const
 
 bytes const& State::code(Address const& _contract) const
 {
-	if (!addressHasCode(_contract))
-		return NullBytes;
+	if (!addressHasCode(_contract)) return NullBytes;
 	ensureCached(_contract, true, false);
 	return m_cache[_contract].code();
 }
 
 h256 State::codeHash(Address const& _contract) const
 {
-	if (!addressHasCode(_contract))
-		return EmptySHA3;
-	if (m_cache[_contract].isFreshCode())
-		return sha3(code(_contract));
+	if (!addressHasCode(_contract)) return EmptySHA3;
+	if (m_cache[_contract].isFreshCode()) return sha3(code(_contract));
 	return m_cache[_contract].codeHash();
 }
 
 bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 {
-	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e)
-		try
+	for (int e = 0; e < (_enforceRefs ? 2 : 1); ++e) try
 		{
 			EnforceRefs r(m_db, !!e);
 			auto lo = m_state.leftOvers();
@@ -444,14 +433,17 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 				return false;
 			}
 			// TODO: Enable once fixed.
-/*			for (auto const& i: m_state)
-			{
-				RLP r(i.second);
-				SecureTrieDB<h256, OverlayDB> storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());	// promise not to alter OverlayDB.
-				for (auto const& j: storageDB) { (void)j; }
-				if (!e && r[3].toHash<h256>() != EmptySHA3 && m_db.lookup(r[3].toHash<h256>()).empty())
-					return false;
-			}*/
+			/*			for (auto const& i: m_state)
+						{
+							RLP r(i.second);
+							SecureTrieDB<h256, OverlayDB>
+			   storageDB(const_cast<OverlayDB*>(&m_db), r[2].toHash<h256>());
+			   // promise not to alter OverlayDB.
+							for (auto const& j: storageDB) { (void)j; }
+							if (!e && r[3].toHash<h256>() != EmptySHA3 &&
+			   m_db.lookup(r[3].toHash<h256>()).empty())
+								return false;
+						}*/
 		}
 		catch (InvalidTrie const&)
 		{
@@ -463,12 +455,13 @@ bool State::isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const
 	return true;
 }
 
-std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo, SealEngineFace* _sealEngine, Transaction const& _t, Permanence _p, OnOpFunc const& _onOp)
+std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _envInfo, SealEngineFace* _sealEngine,
+															  Transaction const& _t, Permanence _p,
+															  OnOpFunc const& _onOp)
 {
 	auto onOp = _onOp;
 #if ETH_VMTRACE
-	if (isChannelVisible<VMTraceChannel>())
-		onOp = Executive::simpleTrace(); // override tracer
+	if (isChannelVisible<VMTraceChannel>()) onOp = Executive::simpleTrace();  // override tracer
 #endif
 
 #if ETH_PARANOIA
@@ -477,7 +470,8 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 	auto h = rootHash();
 #endif
 
-	// Create and initialize the executive. This will throw fairly cheaply and quickly if the
+	// Create and initialize the executive. This will throw fairly cheaply and
+	// quickly if the
 	// transaction is bad in any way.
 	Executive e(*this, _envInfo, _sealEngine);
 	ExecutionResult res;
@@ -490,8 +484,7 @@ std::pair<ExecutionResult, TransactionReceipt> State::execute(EnvInfo const& _en
 	ctrace << "Executing" << e.t() << "on" << h;
 	ctrace << toHex(e.t().rlp());
 #endif
-	if (!e.execute())
-		e.go(onOp);
+	if (!e.execute()) e.go(onOp);
 	e.finalize();
 
 #if ETH_PARANOIA
@@ -533,12 +526,10 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 	std::set<Address> d;
 	std::set<Address> dtr;
 	auto trie = SecureTrieDB<Address, OverlayDB>(const_cast<OverlayDB*>(&_s.m_db), _s.rootHash());
-	for (auto i: trie)
-		d.insert(i.first), dtr.insert(i.first);
-	for (auto i: _s.m_cache)
-		d.insert(i.first);
+	for (auto i : trie) d.insert(i.first), dtr.insert(i.first);
+	for (auto i : _s.m_cache) d.insert(i.first);
 
-	for (auto i: d)
+	for (auto i : d)
 	{
 		auto it = _s.m_cache.find(i);
 		Account* cache = it != _s.m_cache.end() ? &it->second : nullptr;
@@ -564,20 +555,19 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 				std::set<u256> cached;
 				if (r)
 				{
-					SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db), r[2].toHash<h256>());		// promise we won't alter the overlay! :)
-					for (auto const& j: memdb)
-						mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
+					SecureTrieDB<h256, OverlayDB> memdb(const_cast<OverlayDB*>(&_s.m_db),
+														r[2].toHash<h256>());  // promise we won't alter the overlay! :)
+					for (auto const& j : memdb) mem[j.first] = RLP(j.second).toInt<u256>(), back.insert(j.first);
 				}
 				if (cache)
-					for (auto const& j: cache->storageOverlay())
+					for (auto const& j : cache->storageOverlay())
 					{
 						if ((!mem.count(j.first) && j.second) || (mem.count(j.first) && mem.at(j.first) != j.second))
 							mem[j.first] = j.second, delta.insert(j.first);
 						else if (j.second)
 							cached.insert(j.first);
 					}
-				if (!delta.empty())
-					lead = (lead == " .   ") ? "*.*  " : "***  ";
+				if (!delta.empty()) lead = (lead == " .   ") ? "*.*  " : "***  ";
 
 				contout << " @:";
 				if (!delta.empty())
@@ -589,15 +579,20 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 				else
 					contout << " $" << (cache ? cache->codeHash() : r[3].toHash<h256>());
 
-				for (auto const& j: mem)
+				for (auto const& j : mem)
 					if (j.second)
-						contout << std::endl << (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     " : cached.count(j.first) ? " .     " : "       ") << std::hex << nouppercase << std::setw(64) << j.first << ": " << std::setw(0) << j.second ;
+						contout << std::endl
+								<< (delta.count(j.first) ? back.count(j.first) ? " *     " : " +     "
+														 : cached.count(j.first) ? " .     " : "       ") << std::hex
+								<< nouppercase << std::setw(64) << j.first << ": " << std::setw(0) << j.second;
 					else
-						contout << std::endl << "XXX    " << std::hex << nouppercase << std::setw(64) << j.first << "";
+						contout << std::endl
+								<< "XXX    " << std::hex << nouppercase << std::setw(64) << j.first << "";
 			}
 			else
 				contout << " [SIMPLE]";
-			_out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>()) << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
+			_out << lead << i << ": " << std::dec << (cache ? cache->nonce() : r[0].toInt<u256>())
+				 << " #:" << (cache ? cache->balance() : r[1].toInt<u256>()) << contout.str() << std::endl;
 		}
 	}
 	return _out;
@@ -607,7 +602,9 @@ std::ostream& dev::eth::operator<<(std::ostream& _out, State const& _s)
 static std::string minHex(h256 const& _h)
 {
 	unsigned i = 0;
-	for (; i < 31 && !_h[i]; ++i) {}
+	for (; i < 31 && !_h[i]; ++i)
+	{
+	}
 	return toHex(_h.ref().cropped(i));
 }
 #endif
@@ -617,7 +614,7 @@ void State::streamJSON(ostream& _f) const
 	_f << "{" << endl;
 #if ETH_FATDB
 	int fi = 0;
-	for (pair<Address, u256> const& i: addresses())
+	for (pair<Address, u256> const& i : addresses())
 	{
 		_f << (fi++ ? "," : "") << "\"" << i.first.hex() << "\": { ";
 		_f << "\"balance\": \"" << toString(i.second) << "\", ";
@@ -626,14 +623,13 @@ void State::streamJSON(ostream& _f) const
 			_f << "\"codeHash\": \"" << codeHash(i.first).hex() << "\", ";
 			_f << "\"storage\": {";
 			int fj = 0;
-			for (pair<u256, u256> const& j: storage(i.first))
+			for (pair<u256, u256> const& j : storage(i.first))
 				_f << (fj++ ? "," : "") << "\"" << minHex(j.first) << "\":\"" << minHex(j.second) << "\"";
 			_f << "}, ";
 		}
 		_f << "\"nonce\": \"" << toString(transactionsFrom(i.first)) << "\"";
-		_f << "}" << endl;	// end account
-		if (!(fi % 100))
-			_f << flush;
+		_f << "}" << endl;  // end account
+		if (!(fi % 100)) _f << flush;
 	}
 #endif
 	_f << "}";

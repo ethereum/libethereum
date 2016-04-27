@@ -30,34 +30,36 @@
 
 namespace dev
 {
-
 class OverlayDB;
 
 namespace eth
 {
-
 #if ETH_DEBUG
-static const unsigned c_maxHeaders = 2048;		///< Maximum number of hashes BlockHashes will ever send.
-static const unsigned c_maxHeadersAsk = 2048;	///< Maximum number of hashes GetBlockHashes will ever ask for.
-static const unsigned c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send.
-static const unsigned c_maxBlocksAsk = 128;		///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
-static const unsigned c_maxPayload = 262144;	///< Maximum size of packet for us to send.
+static const unsigned c_maxHeaders = 2048;	 ///< Maximum number of hashes BlockHashes will ever send.
+static const unsigned c_maxHeadersAsk = 2048;  ///< Maximum number of hashes GetBlockHashes will ever ask for.
+static const unsigned c_maxBlocks = 128;	   ///< Maximum number of blocks Blocks will ever send.
+static const unsigned c_maxBlocksAsk = 128;	///< Maximum number of blocks we ask
+/// to receive in Blocks (when using
+/// GetChain).
+static const unsigned c_maxPayload = 262144;  ///< Maximum size of packet for us to send.
 #else
-static const unsigned c_maxHeaders = 2048;		///< Maximum number of hashes BlockHashes will ever send.
-static const unsigned c_maxHeadersAsk = 2048;	///< Maximum number of hashes GetBlockHashes will ever ask for.
-static const unsigned c_maxBlocks = 128;		///< Maximum number of blocks Blocks will ever send.
-static const unsigned c_maxBlocksAsk = 128;		///< Maximum number of blocks we ask to receive in Blocks (when using GetChain).
-static const unsigned c_maxPayload = 262144;	///< Maximum size of packet for us to send.
+static const unsigned c_maxHeaders = 2048;	 ///< Maximum number of hashes BlockHashes will ever send.
+static const unsigned c_maxHeadersAsk = 2048;  ///< Maximum number of hashes GetBlockHashes will ever ask for.
+static const unsigned c_maxBlocks = 128;	   ///< Maximum number of blocks Blocks will ever send.
+static const unsigned c_maxBlocksAsk = 128;	///< Maximum number of blocks we ask
+/// to receive in Blocks (when using
+/// GetChain).
+static const unsigned c_maxPayload = 262144;  ///< Maximum size of packet for us to send.
 #endif
-static const unsigned c_maxNodes = c_maxBlocks; ///< Maximum number of nodes will ever send.
-static const unsigned c_maxReceipts = c_maxBlocks; ///< Maximum number of receipts will ever send.
+static const unsigned c_maxNodes = c_maxBlocks;		///< Maximum number of nodes will ever send.
+static const unsigned c_maxReceipts = c_maxBlocks;  ///< Maximum number of receipts will ever send.
 
 class BlockChain;
 class TransactionQueue;
 class EthereumHost;
 class EthereumPeer;
 
-enum: byte
+enum : byte
 {
 	StatusPacket = 0x00,
 	NewBlockHashesPacket = 0x01,
@@ -88,15 +90,16 @@ enum class Asking
 
 enum class SyncState
 {
-	NotSynced,			///< Initial chain sync has not started yet
-	Idle,				///< Initial chain sync complete. Waiting for new packets
-	//Seeking,            ///< Gettting subchain headers
-	Waiting,			///< Block downloading paused. Waiting for block queue to process blocks and free space
-	Blocks,				///< Downloading blocks
-	State,				///< Downloading state
-	NewBlocks,			///< Downloading blocks learned from NewHashes packet
+	NotSynced,  ///< Initial chain sync has not started yet
+	Idle,		///< Initial chain sync complete. Waiting for new packets
+	// Seeking,            ///< Gettting subchain headers
+	Waiting,  ///< Block downloading paused. Waiting for block queue to process
+	/// blocks and free space
+	Blocks,		///< Downloading blocks
+	State,		///< Downloading state
+	NewBlocks,  ///< Downloading blocks learned from NewHashes packet
 
-	Size		/// Must be kept last
+	Size  /// Must be kept last
 };
 
 struct SyncStatus
@@ -110,6 +113,5 @@ struct SyncStatus
 	unsigned blocksReceived = 0;
 	bool majorSyncing = false;
 };
-
 }
 }

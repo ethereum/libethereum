@@ -28,26 +28,29 @@
 
 namespace dev
 {
-
 namespace eth
 {
-
-struct MineInfo: public WorkingProgress {};
+struct MineInfo : public WorkingProgress
+{
+};
 
 inline std::ostream& operator<<(std::ostream& _out, WorkingProgress _p)
 {
-	_out << _p.rate() << " H/s = " <<  _p.hashes << " hashes / " << (double(_p.ms) / 1000) << " s";
+	_out << _p.rate() << " H/s = " << _p.hashes << " hashes / " << (double(_p.ms) / 1000) << " s";
 	return _out;
 }
 
-template <class PoW> class GenericMiner;
+template <class PoW>
+class GenericMiner;
 
 /**
  * @brief Class for hosting one or more Miners.
- * @warning Must be implemented in a threadsafe manner since it will be called from multiple
+ * @warning Must be implemented in a threadsafe manner since it will be called
+ * from multiple
  * miner threads.
  */
-template <class PoW> class GenericFarmFace
+template <class PoW>
+class GenericFarmFace
 {
 public:
 	using WorkPackage = typename PoW::WorkPackage;
@@ -59,7 +62,8 @@ public:
 	/**
 	 * @brief Called from a Miner to note a WorkPackage has a solution.
 	 * @param _p The solution.
-	 * @param _wp The WorkPackage that the Solution is for; this will be reset if the work is accepted.
+	 * @param _wp The WorkPackage that the Solution is for; this will be reset if
+	 * the work is accepted.
 	 * @param _finder The miner that found it.
 	 * @return true iff the solution was good (implying that mining should be .
 	 */
@@ -68,9 +72,11 @@ public:
 
 /**
  * @brief A miner - a member and adoptee of the Farm.
- * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from this class.
+ * @warning Not threadsafe. It is assumed Farm will synchronise calls to/from
+ * this class.
  */
-template <class PoW> class GenericMiner
+template <class PoW>
+class GenericMiner
 {
 public:
 	using WorkPackage = typename PoW::WorkPackage;
@@ -78,10 +84,7 @@ public:
 	using FarmFace = GenericFarmFace<PoW>;
 	using ConstructionInfo = std::pair<FarmFace*, unsigned>;
 
-	GenericMiner(ConstructionInfo const& _ci):
-		m_farm(_ci.first),
-		m_index(_ci.second)
-	{}
+	GenericMiner(ConstructionInfo const& _ci) : m_farm(_ci.first), m_index(_ci.second) {}
 	virtual ~GenericMiner() {}
 
 	// API FOR THE FARM TO CALL IN WITH
@@ -96,9 +99,9 @@ public:
 		if (!!_work)
 		{
 			DEV_TIMED_ABOVE("pause", 250)
-				pause();
+			pause();
 			DEV_TIMED_ABOVE("kickOff", 250)
-				kickOff();
+			kickOff();
 		}
 		else if (!_work && !!old)
 			pause();
@@ -112,7 +115,6 @@ public:
 	unsigned index() const { return m_index; }
 
 protected:
-
 	// REQUIRED TO BE REIMPLEMENTED BY A SUBCLASS:
 
 	/**
@@ -135,8 +137,7 @@ protected:
 	 */
 	bool submitProof(Solution const& _s)
 	{
-		if (!m_farm)
-			return true;
+		if (!m_farm) return true;
 		if (m_farm->submitProof(_s, this))
 		{
 			Guard l(x_work);
@@ -146,7 +147,11 @@ protected:
 		return false;
 	}
 
-	WorkPackage const& work() const { Guard l(x_work); return m_work; }
+	WorkPackage const& work() const
+	{
+		Guard l(x_work);
+		return m_work;
+	}
 
 	void accumulateHashes(unsigned _n) { m_hashCount += _n; }
 
@@ -159,6 +164,5 @@ private:
 	WorkPackage m_work;
 	mutable Mutex x_work;
 };
-
 }
 }

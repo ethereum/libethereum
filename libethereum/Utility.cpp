@@ -56,20 +56,16 @@ bytes dev::eth::parseData(string const& _args)
 				v *= dev::eth::ether;
 			bytes bs = dev::toCompactBigEndian(v);
 			if (what[1] != "$")
-				for (auto i = bs.size(); i < 32; ++i)
-					m_data.push_back(0);
-			for (auto b: bs)
-				m_data.push_back(b);
+				for (auto i = bs.size(); i < 32; ++i) m_data.push_back(0);
+			for (auto b : bs) m_data.push_back(b);
 			s = what[7];
 		}
 		else if (boost::regex_match(s, what, h))
 		{
 			bytes bs = fromHex(((what[3].length() & 1) ? "0" : "") + what[3]);
 			if (what[1] != "$")
-				for (auto i = bs.size(); i < 32; ++i)
-					m_data.push_back(0);
-			for (auto b: bs)
-				m_data.push_back(b);
+				for (auto i = bs.size(); i < 32; ++i) m_data.push_back(0);
+			for (auto b : bs) m_data.push_back(b);
 			s = what[5];
 		}
 		else if (boost::regex_match(s, what, r))
@@ -133,10 +129,10 @@ void dev::eth::upgradeDatabase(std::string const& _basePath, h256 const& _genesi
 		}
 		catch (...)
 		{
-			cwarn << "Couldn't upgrade. Some issue with moving files around. Probably easiest just to redownload.";
+			cwarn << "Couldn't upgrade. Some issue with moving files around. "
+					 "Probably easiest just to redownload.";
 		}
 
 		fs::rename(path + "/status", path + "/status.old");
 	}
 }
-

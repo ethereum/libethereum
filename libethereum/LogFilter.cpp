@@ -48,12 +48,10 @@ h256 LogFilter::sha3() const
 
 bool LogFilter::isRangeFilter() const
 {
-	if (m_addresses.size())
-		return false;
+	if (m_addresses.size()) return false;
 
-	for (auto const& t: m_topics)
-		if (t.size())
-			return false;
+	for (auto const& t : m_topics)
+		if (t.size()) return false;
 
 	return true;
 }
@@ -62,28 +60,24 @@ bool LogFilter::matches(LogBloom _bloom) const
 {
 	if (m_addresses.size())
 	{
-		for (auto const& i: m_addresses)
-			if (_bloom.containsBloom<3>(dev::sha3(i)))
-				goto OK1;
+		for (auto const& i : m_addresses)
+			if (_bloom.containsBloom<3>(dev::sha3(i))) goto OK1;
 		return false;
 	}
-	OK1:
-	for (auto const& t: m_topics)
+OK1:
+	for (auto const& t : m_topics)
 		if (t.size())
 		{
-			for (auto const& i: t)
-				if (_bloom.containsBloom<3>(dev::sha3(i)))
-					goto OK2;
+			for (auto const& i : t)
+				if (_bloom.containsBloom<3>(dev::sha3(i))) goto OK2;
 			return false;
-			OK2:;
+		OK2:
+			;
 		}
 	return true;
 }
 
-bool LogFilter::matches(Block const& _s, unsigned _i) const
-{
-	return matches(_s.receipt(_i)).size() > 0;
-}
+bool LogFilter::matches(Block const& _s, unsigned _i) const { return matches(_s.receipt(_i)).size() > 0; }
 
 vector<LogBloom> LogFilter::bloomPossibilities() const
 {
@@ -91,7 +85,7 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 	vector<LogBloom> ret;
 
 	// | every address with every topic
-	for (auto const& i: m_addresses)
+	for (auto const& i : m_addresses)
 	{
 		// 1st case, there are addresses and topics
 		//
@@ -103,12 +97,11 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 		// a1 | t0, a1 | t1a | t1b
 		// ]
 		//
-		for (auto const& t: m_topics)
+		for (auto const& t : m_topics)
 			if (t.size())
 			{
 				LogBloom b = LogBloom().shiftBloom<3>(dev::sha3(i));
-				for (auto const &j: t)
-					b = b.shiftBloom<3>(dev::sha3(j));
+				for (auto const& j : t) b = b.shiftBloom<3>(dev::sha3(j));
 				ret.push_back(b);
 			}
 	}
@@ -121,8 +114,7 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 	// blooms = [a0, a1];
 	//
 	if (!ret.size())
-		for (auto const& i: m_addresses)
-			ret.push_back(LogBloom().shiftBloom<3>(dev::sha3(i)));
+		for (auto const& i : m_addresses) ret.push_back(LogBloom().shiftBloom<3>(dev::sha3(i)));
 
 	// 3rd case, there are no addresses, at least create blooms from topics
 	//
@@ -132,12 +124,11 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 	// blooms = [t0, t1a | t1b];
 	//
 	if (!m_addresses.size())
-		for (auto const& t: m_topics)
+		for (auto const& t : m_topics)
 			if (t.size())
 			{
 				LogBloom b;
-				for (auto const &j: t)
-					b = b.shiftBloom<3>(dev::sha3(j));
+				for (auto const& j : t) b = b.shiftBloom<3>(dev::sha3(j));
 				ret.push_back(b);
 			}
 
@@ -147,20 +138,18 @@ vector<LogBloom> LogFilter::bloomPossibilities() const
 LogEntries LogFilter::matches(TransactionReceipt const& _m) const
 {
 	// there are no addresses or topics to filter
-	if (isRangeFilter())
-		return _m.log();
+	if (isRangeFilter()) return _m.log();
 
 	LogEntries ret;
 	if (matches(_m.bloom()))
-		for (LogEntry const& e: _m.log())
+		for (LogEntry const& e : _m.log())
 		{
-			if (!m_addresses.empty() && !m_addresses.count(e.address))
-				goto continue2;
+			if (!m_addresses.empty() && !m_addresses.count(e.address)) goto continue2;
 			for (unsigned i = 0; i < 4; ++i)
-				if (!m_topics[i].empty() && (e.topics.size() < i || !m_topics[i].count(e.topics[i])))
-					goto continue2;
+				if (!m_topics[i].empty() && (e.topics.size() < i || !m_topics[i].count(e.topics[i]))) goto continue2;
 			ret.push_back(e);
-			continue2:;
+		continue2:
+			;
 		}
 	return ret;
 }

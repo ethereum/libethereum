@@ -50,7 +50,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 			RLP r(bb);
 			BlockReceipts brs(_bc.receipts(bi.hash()));
 			size_t i = 0;
-			for (auto const& tr: r[1])
+			for (auto const& tr : r[1])
 			{
 				Transaction tx(tr.data(), CheckTransaction::None);
 				u256 gu = brs.receipts[i].gasUsed();
@@ -70,14 +70,12 @@ void BasicGasPricer::update(BlockChain const& _bc)
 
 		// calc mean
 		u256 mean = 0;
-		for (auto const& i: dist)
-			mean += i.first * i.second;
+		for (auto const& i : dist) mean += i.first * i.second;
 		mean /= total;
 
 		// calc standard deviation
 		u256 sdSquared = 0;
-		for (auto const& i: dist)
-			sdSquared += i.second * (i.first - mean) * (i.first - mean);
+		for (auto const& i : dist) sdSquared += i.second * (i.first - mean) * (i.first - mean);
 		sdSquared /= total;
 
 		if (sdSquared)
@@ -93,8 +91,7 @@ void BasicGasPricer::update(BlockChain const& _bc)
 		}
 		else
 		{
-			for (size_t i = 0; i < 9; i++)
-				m_octiles[i] = (i + 1) * mean / 5;
+			for (size_t i = 0; i < 9; i++) m_octiles[i] = (i + 1) * mean / 5;
 		}
 	}
 }

@@ -28,18 +28,19 @@
 
 namespace dev
 {
-
 class OverlayDB;
 
 namespace eth
 {
-
 class Account;
 
 class CachedAddressState
 {
 public:
-	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o): m_rS(_rlp), m_r(m_rS), m_s(_s), m_o(_o) {}
+	CachedAddressState(std::string const& _rlp, Account const* _s, OverlayDB const* _o)
+		: m_rS(_rlp), m_r(m_rS), m_s(_s), m_o(_o)
+	{
+	}
 
 	bool exists() const;
 	u256 balance() const;
@@ -57,7 +58,5 @@ private:
 	Account const* m_s;
 	OverlayDB const* m_o;
 };
-
 }
-
 }

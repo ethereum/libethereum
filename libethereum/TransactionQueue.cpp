@@ -33,25 +33,23 @@ const char* TransactionQueueTraceChannel::name() { return EthCyan " ┅▶"; }
 
 const size_t c_maxVerificationQueueSize = 8192;
 
-TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit):
-	m_current(PriorityCompare { *this }),
-	m_limit(_limit),
-	m_futureLimit(_futureLimit)
+TransactionQueue::TransactionQueue(unsigned _limit, unsigned _futureLimit)
+	: m_current(PriorityCompare{*this}), m_limit(_limit), m_futureLimit(_futureLimit)
 {
 	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
 	for (unsigned i = 0; i < verifierThreads; ++i)
-		m_verifiers.emplace_back([=](){
-			setThreadName("txcheck" + toString(i));
-			this->verifierBody();
-		});
+		m_verifiers.emplace_back([=]()
+								 {
+									 setThreadName("txcheck" + toString(i));
+									 this->verifierBody();
+								 });
 }
 
 TransactionQueue::~TransactionQueue()
 {
 	m_aborting = true;
 	m_queueReady.notify_all();
-	for (auto& i: m_verifiers)
-		i.join();
+	for (auto& i : m_verifiers) i.join();
 }
 
 ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _ik)
@@ -65,17 +63,20 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _
 		UpgradableGuard l(m_lock);
 
 		ir = check_WITH_LOCK(h, _ik);
-		if (ir != ImportResult::Success)
-			return ir;
+		if (ir != ImportResult::Success) return ir;
 
 		try
 		{
-			// Check validity of _transactionRLP as a transaction. To do this we just deserialise and attempt to determine the sender.
+			// Check validity of _transactionRLP as a transaction. To do this we just
+			// deserialise and attempt to
+			// determine the sender.
 			// If it doesn't work, the signature is bad.
-			// The transaction's nonce may yet be invalid (or, it could be "valid" but we may be missing a marginally older transaction).
+			// The transaction's nonce may yet be invalid (or, it could be "valid" but
+			// we may be missing a marginally
+			// older transaction).
 			t = Transaction(_transactionRLP, CheckTransaction::Everything);
 			UpgradeGuard ul(l);
-//			cdebug << "Importing" << t;
+			//			cdebug << "Importing" << t;
 			ir = manageImport_WITH_LOCK(h, t);
 		}
 		catch (...)
@@ -88,11 +89,9 @@ ImportResult TransactionQueue::import(bytesConstRef _transactionRLP, IfDropped _
 
 ImportResult TransactionQueue::check_WITH_LOCK(h256 const& _h, IfDropped _ik)
 {
-	if (m_known.count(_h))
-		return ImportResult::AlreadyKnown;
+	if (m_known.count(_h)) return ImportResult::AlreadyKnown;
 
-	if (m_dropped.count(_h) && _ik == IfDropped::Ignore)
-		return ImportResult::AlreadyInChain;
+	if (m_dropped.count(_h) && _ik == IfDropped::Ignore) return ImportResult::AlreadyInChain;
 
 	return ImportResult::Success;
 }
@@ -106,11 +105,10 @@ ImportResult TransactionQueue::import(Transaction const& _transaction, IfDropped
 	{
 		UpgradableGuard l(m_lock);
 		auto ir = check_WITH_LOCK(h, _ik);
-		if (ir != ImportResult::Success)
-			return ir;
+		if (ir != ImportResult::Success) return ir;
 
 		{
-			_transaction.safeSender(); // Perform EC recovery outside of the write lock
+			_transaction.safeSender();  // Perform EC recovery outside of the write lock
 			UpgradeGuard ul(l);
 			ret = manageImport_WITH_LOCK(h, _transaction);
 		}
@@ -123,8 +121,7 @@ Transactions TransactionQueue::topTransactions(unsigned _limit, h256Hash const& 
 	ReadGuard l(m_lock);
 	Transactions ret;
 	for (auto t = m_current.begin(); ret.size() < _limit && t != m_current.end(); ++t)
-		if (!_avoid.count(t->transaction.sha3()))
-			ret.push_back(t->transaction);
+		if (!_avoid.count(t->transaction.sha3())) ret.push_back(t->transaction);
 	return ret;
 }
 
@@ -169,8 +166,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 				{
 					fs->second.erase(t);
 					--m_futureSize;
-					if (fs->second.empty())
-						m_future.erase(fs);
+					if (fs->second.empty()) m_future.erase(fs);
 				}
 			}
 		}
@@ -188,7 +184,7 @@ ImportResult TransactionQueue::manageImport_WITH_LOCK(h256 const& _h, Transactio
 	}
 	catch (Exception const& _e)
 	{
-		ctxq << "Ignoring invalid transaction: " <<  diagnostic_information(_e);
+		ctxq << "Ignoring invalid transaction: " << diagnostic_information(_e);
 		return ImportResult::Malformed;
 	}
 	catch (std::exception const& _e)
@@ -210,11 +206,9 @@ u256 TransactionQueue::maxNonce_WITH_LOCK(Address const& _a) const
 {
 	u256 ret = 0;
 	auto cs = m_currentByAddressAndNonce.find(_a);
-	if (cs != m_currentByAddressAndNonce.end() && !cs->second.empty())
-		ret = cs->second.rbegin()->first + 1;
+	if (cs != m_currentByAddressAndNonce.end() && !cs->second.empty()) ret = cs->second.rbegin()->first + 1;
 	auto fs = m_future.find(_a);
-	if (fs != m_future.end() && !fs->second.empty())
-		ret = std::max(ret, fs->second.rbegin()->first + 1);
+	if (fs != m_future.end() && !fs->second.empty()) ret = std::max(ret, fs->second.rbegin()->first + 1);
 	return ret;
 }
 
@@ -241,17 +235,15 @@ void TransactionQueue::insertCurrent_WITH_LOCK(std::pair<h256, Transaction> cons
 bool TransactionQueue::remove_WITH_LOCK(h256 const& _txHash)
 {
 	auto t = m_currentByHash.find(_txHash);
-	if (t == m_currentByHash.end())
-		return false;
+	if (t == m_currentByHash.end()) return false;
 
 	Address from = (*t->second).transaction.from();
 	auto it = m_currentByAddressAndNonce.find(from);
-	assert (it != m_currentByAddressAndNonce.end());
+	assert(it != m_currentByAddressAndNonce.end());
 	it->second.erase((*t->second).transaction.nonce());
 	m_current.erase(t->second);
 	m_currentByHash.erase(t);
-	if (it->second.empty())
-		m_currentByAddressAndNonce.erase(it);
+	if (it->second.empty()) m_currentByAddressAndNonce.erase(it);
 	m_known.erase(_txHash);
 	return true;
 }
@@ -261,11 +253,9 @@ unsigned TransactionQueue::waiting(Address const& _a) const
 	ReadGuard l(m_lock);
 	unsigned ret = 0;
 	auto cs = m_currentByAddressAndNonce.find(_a);
-	if (cs != m_currentByAddressAndNonce.end())
-		ret = cs->second.size();
+	if (cs != m_currentByAddressAndNonce.end()) ret = cs->second.size();
 	auto fs = m_future.find(_a);
-	if (fs != m_future.end())
-		ret += fs->second.size();
+	if (fs != m_future.end()) ret += fs->second.size();
 	return ret;
 }
 
@@ -273,8 +263,7 @@ void TransactionQueue::setFuture(h256 const& _txHash)
 {
 	WriteGuard l(m_lock);
 	auto it = m_currentByHash.find(_txHash);
-	if (it == m_currentByHash.end())
-		return;
+	if (it == m_currentByHash.end()) return;
 
 	VerifiedTransaction const& st = *(it->second);
 
@@ -284,15 +273,16 @@ void TransactionQueue::setFuture(h256 const& _txHash)
 	auto cutoff = queue.lower_bound(st.transaction.nonce());
 	for (auto m = cutoff; m != queue.end(); ++m)
 	{
-		VerifiedTransaction& t = const_cast<VerifiedTransaction&>(*(m->second)); // set has only const iterators. Since we are moving out of container that's fine
+		VerifiedTransaction& t =
+			const_cast<VerifiedTransaction&>(*(m->second));  // set has only const iterators. Since we are moving out
+															 // of container that's fine
 		m_currentByHash.erase(t.transaction.sha3());
 		target.emplace(t.transaction.nonce(), move(t));
 		m_current.erase(m->second);
 		++m_futureSize;
 	}
 	queue.erase(cutoff, queue.end());
-	if (queue.empty())
-		m_currentByAddressAndNonce.erase(from);
+	if (queue.empty()) m_currentByAddressAndNonce.erase(from);
 }
 
 void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
@@ -308,7 +298,8 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 			auto ft = fb;
 			while (ft != fs->second.end() && ft->second.transaction.nonce() == nonce)
 			{
-				auto inserted = m_currentByAddressAndNonce[_t.from()].insert(std::make_pair(ft->second.transaction.nonce(), PriorityQueue::iterator()));
+				auto inserted = m_currentByAddressAndNonce[_t.from()].insert(
+					std::make_pair(ft->second.transaction.nonce(), PriorityQueue::iterator()));
 				PriorityQueue::iterator handle = m_current.emplace(move(ft->second));
 				inserted.first->second = handle;
 				m_currentByHash[(*handle).transaction.sha3()] = handle;
@@ -318,8 +309,7 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 				newCurrent = true;
 			}
 			fs->second.erase(fb, ft);
-			if (fs->second.empty())
-				m_future.erase(_t.from());
+			if (fs->second.empty()) m_future.erase(_t.from());
 		}
 	}
 
@@ -328,22 +318,20 @@ void TransactionQueue::makeCurrent_WITH_LOCK(Transaction const& _t)
 		// TODO: priority queue for future transactions
 		// For now just drop random chain end
 		--m_futureSize;
-		clog(TransactionQueueTraceChannel) << "Dropping out of bounds future transaction" << m_future.begin()->second.rbegin()->second.transaction.sha3();
+		clog(TransactionQueueTraceChannel) << "Dropping out of bounds future transaction"
+										   << m_future.begin()->second.rbegin()->second.transaction.sha3();
 		m_future.begin()->second.erase(--m_future.begin()->second.end());
-		if (m_future.begin()->second.empty())
-			m_future.erase(m_future.begin());
+		if (m_future.begin()->second.empty()) m_future.erase(m_future.begin());
 	}
 
-	if (newCurrent)
-		m_onReady();
+	if (newCurrent) m_onReady();
 }
 
 void TransactionQueue::drop(h256 const& _txHash)
 {
 	UpgradableGuard l(m_lock);
 
-	if (!m_known.count(_txHash))
-		return;
+	if (!m_known.count(_txHash)) return;
 
 	UpgradeGuard ul(l);
 	m_dropped.insert(_txHash);
@@ -354,8 +342,7 @@ void TransactionQueue::dropGood(Transaction const& _t)
 {
 	WriteGuard l(m_lock);
 	makeCurrent_WITH_LOCK(_t);
-	if (!m_known.count(_t.sha3()))
-		return;
+	if (!m_known.count(_t.sha3())) return;
 	remove_WITH_LOCK(_t.sha3());
 }
 
@@ -380,15 +367,15 @@ void TransactionQueue::enqueue(RLP const& _data, h512 const& _nodeId)
 		{
 			if (m_unverified.size() >= c_maxVerificationQueueSize)
 			{
-				clog(TransactionQueueChannel) << "Transaction verification queue is full. Dropping" << itemCount - i << "transactions";
+				clog(TransactionQueueChannel) << "Transaction verification queue is full. Dropping" << itemCount - i
+											  << "transactions";
 				break;
 			}
 			m_unverified.emplace_back(UnverifiedTransaction(_data[i].data(), _nodeId));
 			queued = true;
 		}
 	}
-	if (queued)
-		m_queueReady.notify_all();
+	if (queued) m_queueReady.notify_all();
 }
 
 void TransactionQueue::verifierBody()
@@ -399,16 +386,18 @@ void TransactionQueue::verifierBody()
 
 		{
 			unique_lock<Mutex> l(x_queue);
-			m_queueReady.wait(l, [&](){ return !m_unverified.empty() || m_aborting; });
-			if (m_aborting)
-				return;
+			m_queueReady.wait(l, [&]()
+							  {
+								  return !m_unverified.empty() || m_aborting;
+							  });
+			if (m_aborting) return;
 			work = move(m_unverified.front());
 			m_unverified.pop_front();
 		}
 
 		try
 		{
-			Transaction t(work.transaction, CheckTransaction::Cheap); //Signature will be checked later
+			Transaction t(work.transaction, CheckTransaction::Cheap);  // Signature will be checked later
 			ImportResult ir = import(t);
 			m_onImport(ir, t.sha3(), work.nodeId);
 		}

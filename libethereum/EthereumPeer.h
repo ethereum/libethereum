@@ -36,20 +36,20 @@ namespace dev
 {
 namespace eth
 {
-
 /**
  * @brief The EthereumPeer class
  * @todo Document fully.
  * @todo make state transitions thread-safe.
  */
-class EthereumPeer: public p2p::Capability
+class EthereumPeer : public p2p::Capability
 {
-	friend class EthereumHost; //TODO: remove this
-	friend class BlockChainSync; //TODO: remove this
+	friend class EthereumHost;	// TODO: remove this
+	friend class BlockChainSync;  // TODO: remove this
 
 public:
 	/// Basic constructor.
-	EthereumPeer(std::shared_ptr<p2p::Session> _s, p2p::HostCapabilityFace* _h, unsigned _i, p2p::CapDesc const& _cap, uint16_t _capID);
+	EthereumPeer(std::shared_ptr<p2p::Session> _s, p2p::HostCapabilityFace* _h, unsigned _i, p2p::CapDesc const& _cap,
+				 uint16_t _capID);
 
 	/// Basic destructor.
 	virtual ~EthereumPeer();
@@ -97,9 +97,12 @@ private:
 	/// Request status. Called from constructor
 	void requestStatus();
 
-
 	/// Clear all known transactions.
-	void clearKnownTransactions() { std::lock_guard<std::mutex> l(x_knownTransactions); m_knownTransactions.clear(); }
+	void clearKnownTransactions()
+	{
+		std::lock_guard<std::mutex> l(x_knownTransactions);
+		m_knownTransactions.clear();
+	}
 
 	/// Update our asking state.
 	void setAsking(Asking _g);
@@ -128,27 +131,31 @@ private:
 	std::atomic<time_t> m_lastAsk;
 
 	/// These are determined through either a Status message or from NewBlock.
-	h256 m_latestHash;						///< Peer's latest block's hash that we know about or default null value if no need to sync.
-	u256 m_totalDifficulty;					///< Peer's latest block's total difficulty.
-	h256 m_genesisHash;						///< Peer's genesis hash
+	h256 m_latestHash;  ///< Peer's latest block's hash that we know about or
+	/// default null value if no need to sync.
+	u256 m_totalDifficulty;  ///< Peer's latest block's total difficulty.
+	h256 m_genesisHash;		 ///< Peer's genesis hash
 
-	/// This is built as we ask for hashes. Once no more hashes are given, we present this to the
-	/// host who initialises the DownloadMan and m_sub becomes active for us to begin asking for blocks.
-	u256 m_syncHashNumber = 0;				///< Number of latest hash we sync to (PV61+)
-	u256 m_height = 0;						///< Chain height
-	h256 m_syncHash;						///< Latest hash we sync to (PV60)
+	/// This is built as we ask for hashes. Once no more hashes are given, we
+	/// present this to the
+	/// host who initialises the DownloadMan and m_sub becomes active for us to
+	/// begin asking for blocks.
+	u256 m_syncHashNumber = 0;  ///< Number of latest hash we sync to (PV61+)
+	u256 m_height = 0;			///< Chain height
+	h256 m_syncHash;			///< Latest hash we sync to (PV60)
 
-	u256 m_peerCapabilityVersion;			///< Protocol version this peer supports received as capability
+	u256 m_peerCapabilityVersion;  ///< Protocol version this peer supports
+	/// received as capability
 	/// Have we received a GetTransactions packet that we haven't yet answered?
 	bool m_requireTransactions = false;
 
 	Mutex x_knownBlocks;
-	h256Hash m_knownBlocks;					///< Blocks that the peer already knows about (that don't need to be sent to them).
+	h256Hash m_knownBlocks;  ///< Blocks that the peer already knows about (that
+	/// don't need to be sent to them).
 	Mutex x_knownTransactions;
-	h256Hash m_knownTransactions;			///< Transactions that the peer already knows of.
-	unsigned m_unknownNewBlocks = 0;		///< Number of unknown NewBlocks received from this peer
-	unsigned m_lastAskedHeaders = 0;		///< Number of hashes asked
+	h256Hash m_knownTransactions;	 ///< Transactions that the peer already knows of.
+	unsigned m_unknownNewBlocks = 0;  ///< Number of unknown NewBlocks received from this peer
+	unsigned m_lastAskedHeaders = 0;  ///< Number of hashes asked
 };
-
 }
 }

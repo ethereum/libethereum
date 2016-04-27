@@ -28,10 +28,8 @@
 
 namespace dev
 {
-
 namespace eth
 {
-
 class TransactionReceipt
 {
 public:
@@ -45,7 +43,12 @@ public:
 
 	void streamRLP(RLPStream& _s) const;
 
-	bytes rlp() const { RLPStream s; streamRLP(s); return s.out(); }
+	bytes rlp() const
+	{
+		RLPStream s;
+		streamRLP(s);
+		return s.out();
+	}
 
 private:
 	h256 m_stateRoot;
@@ -58,34 +61,23 @@ using TransactionReceipts = std::vector<TransactionReceipt>;
 
 std::ostream& operator<<(std::ostream& _out, eth::TransactionReceipt const& _r);
 
-class LocalisedTransactionReceipt: public TransactionReceipt
+class LocalisedTransactionReceipt : public TransactionReceipt
 {
 public:
-	LocalisedTransactionReceipt(
-		TransactionReceipt const& _t,
-		h256 const& _hash,
-		h256 const& _blockHash,
-		BlockNumber _blockNumber,
-		unsigned _transactionIndex,
-		Address const& _contractAddress = Address()
-	):
-		TransactionReceipt(_t),
-		m_hash(_hash),
-		m_blockHash(_blockHash),
-		m_blockNumber(_blockNumber),
-		m_transactionIndex(_transactionIndex),
-		m_contractAddress(_contractAddress)
+	LocalisedTransactionReceipt(TransactionReceipt const& _t, h256 const& _hash, h256 const& _blockHash,
+								BlockNumber _blockNumber, unsigned _transactionIndex,
+								Address const& _contractAddress = Address())
+		: TransactionReceipt(_t),
+		  m_hash(_hash),
+		  m_blockHash(_blockHash),
+		  m_blockNumber(_blockNumber),
+		  m_transactionIndex(_transactionIndex),
+		  m_contractAddress(_contractAddress)
 	{
 		LogEntries entries = log();
 		for (unsigned i = 0; i < entries.size(); i++)
-			m_localisedLogs.push_back(LocalisedLogEntry(
-				entries[i],
-				m_blockHash,
-				m_blockNumber,
-				m_hash,
-				m_transactionIndex,
-				i
-			));
+			m_localisedLogs.push_back(
+				LocalisedLogEntry(entries[i], m_blockHash, m_blockNumber, m_hash, m_transactionIndex, i));
 	}
 
 	h256 const& hash() const { return m_hash; }
@@ -103,6 +95,5 @@ private:
 	Address m_contractAddress;
 	LocalisedLogEntries m_localisedLogs;
 };
-
 }
 }
