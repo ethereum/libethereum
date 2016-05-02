@@ -373,6 +373,8 @@ bool ethash_cl_miner::init(
 		string code(ETHASH_CL_MINER_KERNEL, ETHASH_CL_MINER_KERNEL + ETHASH_CL_MINER_KERNEL_SIZE);
 		addDefinition(code, "GROUP_SIZE", s_workgroupSize);
 		addDefinition(code, "DAG_SIZE", (unsigned)(_dagSize / ETHASH_MIX_BYTES));
+		const unsigned DAG_CHUNK_SIZE = ((_dagSize >> 9) << 7) / ETHASH_MIX_BYTES;
+		addDefinition(code, "DAG_CHUNK_SIZE", DAG_CHUNK_SIZE);
 		addDefinition(code, "ACCESSES", ETHASH_ACCESSES);
 		addDefinition(code, "MAX_OUTPUTS", c_maxSearchResults);
 		//debugf("%s", code.c_str());
@@ -408,48 +410,49 @@ bool ethash_cl_miner::init(
 		}
 		catch (cl::Error const& err)
 		{
-			ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << err.err() << "). GPU can't allocate the DAG in a single chunk. Bailing.");
-			return false;
-#if 0		// Disabling chunking for release since it seems not to work. Never manages to mine a block. TODO: Fix when time is found.
-			int errCode = err.err();
-			if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
-				ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << errCode << ")");
-			cl_ulong result;
-			// if we fail midway on the try above make sure we start clean
-			m_dagChunks.clear();
-			device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
-			ETHCL_LOG(
-				"Failed to allocate 1 big chunk. Max allocateable memory is "
-				<< result << ". Trying to allocate 4 chunks."
-			);
-			// The OpenCL kernel has a hard coded number of 4 chunks at the moment
-			m_dagChunksCount = 4;
-			for (unsigned i = 0; i < m_dagChunksCount; i++)
+			try
 			{
-				// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
-				ETHCL_LOG("Creating buffer for chunk " << i);
-				m_dagChunks.push_back(cl::Buffer(
-					m_context,
-					CL_MEM_READ_ONLY,
-					(i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7
-				));
+				int errCode = err.err();
+				if (errCode != CL_INVALID_BUFFER_SIZE || errCode != CL_MEM_OBJECT_ALLOCATION_FAILURE)
+					ETHCL_LOG("Allocating/mapping single buffer failed with: " << err.what() << "(" << errCode << ")");
+				cl_ulong result;
+				// if we fail midway on the try above make sure we start clean
+				m_dagChunks.clear();
+				device.getInfo(CL_DEVICE_MAX_MEM_ALLOC_SIZE, &result);
+				ETHCL_LOG(
+					"Failed to allocate 1 big chunk. Max allocateable memory is "
+					<< result << ". Trying to allocate 4 chunks."
+				);
+				// The OpenCL kernel has a hard coded number of 4 chunks at the moment
+				m_dagChunksCount = 4;
+				const unsigned chunkSize = DAG_CHUNK_SIZE * ETHASH_MIX_BYTES;
+				const unsigned mDCC1 = m_dagChunksCount - 1;
+				for (unsigned i = 0; i < m_dagChunksCount; i++)
+				{
+					const unsigned mySize = (i == mDCC1) ? (_dagSize - mDCC1 * chunkSize) : chunkSize;
+					ETHCL_LOG("Creating buffer for chunk " << i << " size=" << mySize);
+					m_dagChunks.push_back(cl::Buffer(
+						m_context,
+						CL_MEM_READ_ONLY,
+						mySize));
+				}
+				ETHCL_LOG("Loading chunk kernels");
+				m_hashKernel = cl::Kernel(program, "ethash_hash_chunks");
+				m_searchKernel = cl::Kernel(program, "ethash_search_chunks");
+
+				for (unsigned i = 0; i < m_dagChunksCount; i++)
+				{
+					const unsigned mySize = (i == mDCC1) ? (_dagSize - mDCC1 * chunkSize) : chunkSize;
+					const unsigned myOffset = chunkSize * i;
+					ETHCL_LOG("Mapping chunk " << i << " with size=" << mySize << " and offset=" << myOffset);
+					m_queue.enqueueWriteBuffer(m_dagChunks[i], CL_TRUE, 0, mySize, _dag + myOffset);
+				}
 			}
-			ETHCL_LOG("Loading chunk kernels");
-			m_hashKernel = cl::Kernel(program, "ethash_hash_chunks");
-			m_searchKernel = cl::Kernel(program, "ethash_search_chunks");
-			// TODO Note: If we ever change to _dagChunksNum other than 4, then the size would need recalculation
-			void* dag_ptr[4];
-			for (unsigned i = 0; i < m_dagChunksCount; i++)
+			catch (cl::Error const& err2)
 			{
-				ETHCL_LOG("Mapping chunk " << i);
-				dag_ptr[i] = m_queue.enqueueMapBuffer(m_dagChunks[i], true, m_openclOnePointOne ? CL_MAP_WRITE : CL_MAP_WRITE_INVALIDATE_REGION, 0, (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
+				ETHCL_LOG("Allocating/mapping multiple buffers failed with: " << err2.what() << "(" << err2.err() << "). GPU can't allocate the DAG in multiple chunks. Bailing.");
+				return false;
 			}
-			for (unsigned i = 0; i < m_dagChunksCount; i++)
-			{
-				memcpy(dag_ptr[i], (char *)_dag + i*((_dagSize >> 9) << 7), (i == 3) ? (_dagSize - 3 * ((_dagSize >> 9) << 7)) : (_dagSize >> 9) << 7);
-				m_queue.enqueueUnmapMemObject(m_dagChunks[i], dag_ptr[i]);
-			}
-#endif
 		}
 		// create buffer for header
 		ETHCL_LOG("Creating buffer for header.");

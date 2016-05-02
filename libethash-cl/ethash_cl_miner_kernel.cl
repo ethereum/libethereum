@@ -253,6 +253,12 @@ static uint inner_loop_chunks(uint4 init, uint thread_id, __local uint* share, _
 	barrier(CLK_LOCAL_MEM_FENCE);
 	uint init0 = *share;
 
+
+	const uint chunk1 = DAG_CHUNK_SIZE;
+	const uint chunk2 = chunk1 * 2;
+	const uint chunk3 = chunk1 * 3;
+	uint4 dagV;
+
 	uint a = 0;
 	do
 	{
@@ -268,7 +274,16 @@ static uint inner_loop_chunks(uint4 init, uint thread_id, __local uint* share, _
 			}
 			barrier(CLK_LOCAL_MEM_FENCE);
 
-			mix = fnv4(mix, *share>=3 * DAG_SIZE / 4 ? g_dag3[*share - 3 * DAG_SIZE / 4].uint4s[thread_id] : *share>=DAG_SIZE / 2 ? g_dag2[*share - DAG_SIZE / 2].uint4s[thread_id] : *share>=DAG_SIZE / 4 ? g_dag1[*share - DAG_SIZE / 4].uint4s[thread_id]:g_dag[*share].uint4s[thread_id]);
+			if (*share < chunk1) 
+				dagV = g_dag[*share].uint4s[thread_id];
+			else if (*share < chunk2)
+				dagV = g_dag1[*share - chunk1].uint4s[thread_id];
+			else if (*share < chunk3)
+				dagV = g_dag2[*share - chunk2].uint4s[thread_id];
+			else
+				dagV = g_dag3[*share - chunk3].uint4s[thread_id];
+
+			mix = fnv4(mix, dagV);
 		}
 	} while ((a += 4) != (ACCESSES & isolate));
 
@@ -539,7 +554,7 @@ __kernel void ethash_search(
 
 	if (as_ulong(as_uchar8(hash.ulongs[0]).s76543210) < target)
 	{
-		uint slot = min(MAX_OUTPUTS, atomic_inc(&g_output[0]) + 1);
+		uint slot = min(convert_uint(MAX_OUTPUTS), convert_uint(atomic_inc(&g_output[0]) + 1));
 		g_output[slot] = gid;
 	}
 }
