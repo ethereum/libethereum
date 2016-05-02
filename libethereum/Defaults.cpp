@@ -28,7 +28,4 @@ using namespace dev::eth;
 
 Defaults* Defaults::s_this = nullptr;
 
-Defaults::Defaults()
-{
-	m_dbPath = getDataDir();
-}
+Defaults::Defaults() { m_dbPath = getDataDir(); }

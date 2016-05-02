@@ -39,12 +39,14 @@
 
 namespace dev
 {
-
-namespace test { class ImportTest; class StateLoader; }
+namespace test
+{
+class ImportTest;
+class StateLoader;
+}
 
 namespace eth
 {
-
 // Import-specific errinfos
 using errinfo_uncleIndex = boost::error_info<struct tag_uncleIndex, unsigned>;
 using errinfo_currentNumber = boost::error_info<struct tag_currentNumber, u256>;
@@ -68,10 +70,26 @@ class State;
 class TransactionQueue;
 struct VerifiedBlockRef;
 
-struct StateChat: public LogChannel { static const char* name(); static const int verbosity = 4; };
-struct StateTrace: public LogChannel { static const char* name(); static const int verbosity = 5; };
-struct StateDetail: public LogChannel { static const char* name(); static const int verbosity = 14; };
-struct StateSafeExceptions: public LogChannel { static const char* name(); static const int verbosity = 21; };
+struct StateChat : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 4;
+};
+struct StateTrace : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 5;
+};
+struct StateDetail : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 14;
+};
+struct StateSafeExceptions : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 21;
+};
 
 enum class BaseState
 {
@@ -86,9 +104,11 @@ enum class Permanence
 };
 
 #if ETH_FATDB
-template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<FatGenericTrieDB<DB>, KeyType>;
+template <class KeyType, class DB>
+using SecureTrieDB = SpecificTrieDB<FatGenericTrieDB<DB>, KeyType>;
 #else
-template <class KeyType, class DB> using SecureTrieDB = SpecificTrieDB<HashedGenericTrieDB<DB>, KeyType>;
+template <class KeyType, class DB>
+using SecureTrieDB = SpecificTrieDB<HashedGenericTrieDB<DB>, KeyType>;
 #endif
 
 DEV_SIMPLE_EXCEPTION(InvalidAccountStartNonceInState);
@@ -100,7 +120,8 @@ class SealEngineFace;
 
 /**
  * @brief Model of an Ethereum state, essentially a facade for the trie.
- * Allows you to query the state of accounts, and has built-in caching for various aspects of the
+ * Allows you to query the state of accounts, and has built-in caching for
+ * various aspects of the
  * state.
  */
 class State
@@ -112,22 +133,28 @@ class State
 	friend class BlockChain;
 
 public:
-	/// Default constructor; creates with a blank database prepopulated with the genesis block.
-	explicit State(u256 const& _accountStartNonce): State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
+	/// Default constructor; creates with a blank database prepopulated with the
+	/// genesis block.
+	explicit State(u256 const& _accountStartNonce) : State(_accountStartNonce, OverlayDB(), BaseState::Empty) {}
 
 	/// Basic state object from database.
-	/// Use the default when you already have a database and you just want to make a State object
-	/// which uses it. If you have no preexisting database then set BaseState to something other
+	/// Use the default when you already have a database and you just want to make
+	/// a State object
+	/// which uses it. If you have no preexisting database then set BaseState to
+	/// something other
 	/// than BaseState::PreExisting in order to prepopulate the Trie.
 	explicit State(u256 const& _accountStartNonce, OverlayDB const& _db, BaseState _bs = BaseState::PreExisting);
 
 #if ETH_ALLOW_EMPTY_BLOCK_AND_STATE
-	State(): State(Invalid256, OverlayDB(), BaseState::Empty) {}
-	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting): State(Invalid256, _db, _bs) {}
+	State() : State(Invalid256, OverlayDB(), BaseState::Empty) {}
+	explicit State(OverlayDB const& _db, BaseState _bs = BaseState::PreExisting) : State(Invalid256, _db, _bs) {}
 #endif
 
-	enum NullType { Null };
-	State(NullType): State(Invalid256, OverlayDB(), BaseState::Empty) {}
+	enum NullType
+	{
+		Null
+	};
+	State(NullType) : State(Invalid256, OverlayDB(), BaseState::Empty) {}
 
 	/// Copy state object.
 	State(State const& _s);
@@ -138,23 +165,31 @@ public:
 	/// Stream into a JSON representation.
 	void streamJSON(std::ostream& _f) const;
 
-	/// Open a DB - useful for passing into the constructor & keeping for other states that are necessary.
+	/// Open a DB - useful for passing into the constructor & keeping for other
+	/// states that are necessary.
 	static OverlayDB openDB(std::string const& _path, h256 const& _genesisHash, WithExisting _we = WithExisting::Trust);
-	static OverlayDB openDB(h256 const& _genesisHash, WithExisting _we = WithExisting::Trust) { return openDB(std::string(), _genesisHash, _we); }
+	static OverlayDB openDB(h256 const& _genesisHash, WithExisting _we = WithExisting::Trust)
+	{
+		return openDB(std::string(), _genesisHash, _we);
+	}
 	OverlayDB const& db() const { return m_db; }
 	OverlayDB& db() { return m_db; }
 
-	/// Populate the state from the given AccountMap. Just uses dev::eth::commit().
+	/// Populate the state from the given AccountMap. Just uses
+	/// dev::eth::commit().
 	void populateFrom(AccountMap const& _map);
 
 	/// @returns the set containing all addresses currently in use in Ethereum.
-	/// @warning This is slowslowslow. Don't use it unless you want to lock the object for seconds or minutes at a time.
+	/// @warning This is slowslowslow. Don't use it unless you want to lock the
+	/// object for seconds or minutes at a time.
 	/// @throws InterfaceNotSupported if compiled without ETH_FATDB.
 	std::unordered_map<Address, u256> addresses() const;
 
 	/// Execute a given transaction.
 	/// This will change the state accordingly.
-	std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace* _sealEngine, Transaction const& _t, Permanence _p = Permanence::Committed, OnOpFunc const& _onOp = OnOpFunc());
+	std::pair<ExecutionResult, TransactionReceipt> execute(EnvInfo const& _envInfo, SealEngineFace* _sealEngine,
+														   Transaction const& _t, Permanence _p = Permanence::Committed,
+														   OnOpFunc const& _onOp = OnOpFunc());
 
 	/// Check if the address is in use.
 	bool addressInUse(Address const& _address) const;
@@ -171,8 +206,10 @@ public:
 	void addBalance(Address const& _id, u256 const& _amount);
 
 	/** Subtract some amount from balance.
-	 * @throws NotEnoughCash if balance of @a _id is less than @a _value (or has never been used).
-	 * @note We use bigint here as we don't want any accidental problems with negative numbers.
+	 * @throws NotEnoughCash if balance of @a _id is less than @a _value (or has
+	 * never been used).
+	 * @note We use bigint here as we don't want any accidental problems with
+	 * negative numbers.
 	 */
 	void subBalance(Address const& _id, bigint const& _value);
 
@@ -182,7 +219,11 @@ public:
 	 * @param _to Account to which @a _value will be added.
 	 * @param _value Amount to be transferred.
 	 */
-	void transferBalance(Address const& _from, Address const& _to, u256 const& _value) { subBalance(_from, _value); addBalance(_to, _value); }
+	void transferBalance(Address const& _from, Address const& _to, u256 const& _value)
+	{
+		subBalance(_from, _value);
+		addBalance(_to, _value);
+	}
 
 	/// Get the root of the storage of an account.
 	h256 storageRoot(Address const& _contract) const;
@@ -192,14 +233,18 @@ public:
 	u256 storage(Address const& _contract, u256 const& _memory) const;
 
 	/// Set the value of a storage position of an account.
-	void setStorage(Address const& _contract, u256 const& _location, u256 const& _value) { m_cache[_contract].setStorage(_location, _value); }
+	void setStorage(Address const& _contract, u256 const& _location, u256 const& _value)
+	{
+		m_cache[_contract].setStorage(_location, _value);
+	}
 
 	/// Create a new contract.
 	Address newContract(u256 const& _balance, bytes const& _code);
 
 	/// Get the storage of an account.
 	/// @note This is expensive. Don't use it unless you need to.
-	/// @returns std::unordered_map<u256, u256> if no account exists at that address.
+	/// @returns std::unordered_map<u256, u256> if no account exists at that
+	/// address.
 	std::unordered_map<u256, u256> storage(Address const& _contract) const;
 
 	/// Get the code of an account.
@@ -207,22 +252,28 @@ public:
 	bytes const& code(Address const& _contract) const;
 
 	/// Get the code hash of an account.
-	/// @returns EmptySHA3 if no account exists at that address or if there is no code associated with the address.
+	/// @returns EmptySHA3 if no account exists at that address or if there is no
+	/// code associated with the address.
 	h256 codeHash(Address const& _contract) const;
 
-	/// Note that the given address is sending a transaction and thus increment the associated ticker.
+	/// Note that the given address is sending a transaction and thus increment
+	/// the associated ticker.
 	void noteSending(Address const& _id);
 
-	/// Get the number of transactions a particular address has sent (used for the transaction nonce).
+	/// Get the number of transactions a particular address has sent (used for the
+	/// transaction nonce).
 	/// @returns 0 if the address has never been used.
 	u256 transactionsFrom(Address const& _address) const;
 
 	/// The hash of the root of our state tree.
 	h256 rootHash() const { return m_state.root(); }
 
-	/// @return the difference between this state (origin) and @a _c (destination).
-	/// @param _quick if true doesn't check all addresses possible (/very/ slow for a full chain)
-	/// but rather only those touched by the transactions in creating the two States.
+	/// @return the difference between this state (origin) and @a _c
+	/// (destination).
+	/// @param _quick if true doesn't check all addresses possible (/very/ slow
+	/// for a full chain)
+	/// but rather only those touched by the transactions in creating the two
+	/// States.
 	StateDiff diff(State const& _c, bool _quick = false) const;
 
 	/// Commit all changes waiting in the address cache to the DB.
@@ -238,13 +289,16 @@ public:
 
 private:
 	/// Retrieve all information about a given address into the cache.
-	/// If _requireMemory is true, grab the full memory should it be a contract item.
-	/// If _forceCreate is true, then insert a default item into the cache, in the case it doesn't
+	/// If _requireMemory is true, grab the full memory should it be a contract
+	/// item.
+	/// If _forceCreate is true, then insert a default item into the cache, in the
+	/// case it doesn't
 	/// exist in the DB.
 	void ensureCached(Address const& _a, bool _requireCode, bool _forceCreate) const;
 
 	/// Retrieve all information about a given address into a cache.
-	void ensureCached(std::unordered_map<Address, Account>& _cache, Address const& _a, bool _requireCode, bool _forceCreate) const;
+	void ensureCached(std::unordered_map<Address, Account>& _cache, Address const& _a, bool _requireCode,
+					  bool _forceCreate) const;
 
 	/// Debugging only. Good for checking the Trie is in shape.
 	bool isTrieGood(bool _enforceRefs, bool _requireNoLeftOvers) const;
@@ -252,10 +306,11 @@ private:
 	/// Debugging only. Good for checking the Trie is in shape.
 	void paranoia(std::string const& _when, bool _enforceRefs = false) const;
 
-	OverlayDB m_db;								///< Our overlay for the state tree.
-	SecureTrieDB<Address, OverlayDB> m_state;	///< Our state tree, as an OverlayDB DB.
-	mutable std::unordered_map<Address, Account> m_cache;	///< Our address cache. This stores the states of each address that has (or at least might have) been changed.
-	AddressHash m_touched;						///< Tracks all addresses touched so far.
+	OverlayDB m_db;										   ///< Our overlay for the state tree.
+	SecureTrieDB<Address, OverlayDB> m_state;			   ///< Our state tree, as an OverlayDB DB.
+	mutable std::unordered_map<Address, Account> m_cache;  ///< Our address cache. This stores the states of each
+	/// address that has (or at least might have) been changed.
+	AddressHash m_touched;  ///< Tracks all addresses touched so far.
 
 	u256 m_accountStartNonce;
 
@@ -270,7 +325,7 @@ template <class DB>
 AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state)
 {
 	AddressHash ret;
-	for (auto const& i: _cache)
+	for (auto const& i : _cache)
 		if (i.second.isDirty())
 		{
 			if (!i.second.isAlive())
@@ -288,7 +343,7 @@ AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state)
 				else
 				{
 					SecureTrieDB<h256, DB> storageDB(_state.db(), i.second.baseRoot());
-					for (auto const& j: i.second.storageOverlay())
+					for (auto const& j : i.second.storageOverlay())
 						if (j.second)
 							storageDB.insert(j.first, rlp(j.second));
 						else
@@ -312,7 +367,5 @@ AddressHash commit(AccountMap const& _cache, SecureTrieDB<Address, DB>& _state)
 		}
 	return ret;
 }
-
 }
 }
-

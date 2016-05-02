@@ -30,52 +30,64 @@ AccountChange AccountDiff::changeType() const
 {
 	bool bn = (balance || nonce);
 	bool sc = (!storage.empty() || code);
-	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic: sc ? AccountChange::CodeStorage : AccountChange::None;
+	return exist ? exist.from() ? AccountChange::Deletion : AccountChange::Creation
+				 : (bn && sc) ? AccountChange::All : bn ? AccountChange::Intrinsic : sc ? AccountChange::CodeStorage
+																						: AccountChange::None;
 }
 
 char const* dev::eth::lead(AccountChange _c)
 {
 	switch (_c)
 	{
-	case AccountChange::None: return "   ";
-	case AccountChange::Creation: return "+++";
-	case AccountChange::Deletion: return "XXX";
-	case AccountChange::Intrinsic: return " * ";
-	case AccountChange::CodeStorage: return "* *";
-	case AccountChange::All: return "***";
+		case AccountChange::None:
+			return "   ";
+		case AccountChange::Creation:
+			return "+++";
+		case AccountChange::Deletion:
+			return "XXX";
+		case AccountChange::Intrinsic:
+			return " * ";
+		case AccountChange::CodeStorage:
+			return "* *";
+		case AccountChange::All:
+			return "***";
 	}
 	assert(false);
 	return "";
 }
 
-namespace dev {
-
+namespace dev
+{
 std::ostream& operator<<(std::ostream& _out, dev::eth::AccountDiff const& _s)
 {
-	if (!_s.exist.to())
-		return _out;
+	if (!_s.exist.to()) return _out;
 
 	if (_s.nonce)
 	{
 		_out << std::dec << "#" << _s.nonce.to() << " ";
 		if (_s.nonce.from())
-			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos << ") ";
+			_out << "(" << std::showpos << (((bigint)_s.nonce.to()) - ((bigint)_s.nonce.from())) << std::noshowpos
+				 << ") ";
 	}
 	if (_s.balance)
 	{
 		_out << std::dec << _s.balance.to() << " ";
 		if (_s.balance.from())
-			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos << ") ";
+			_out << "(" << std::showpos << (((bigint)_s.balance.to()) - ((bigint)_s.balance.from())) << std::noshowpos
+				 << ") ";
 	}
-	if (_s.code)
-		_out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
-	for (pair<u256, Diff<u256>> const& i: _s.storage)
+	if (_s.code) _out << "$" << std::hex << nouppercase << _s.code.to() << " (" << _s.code.from() << ") ";
+	for (pair<u256, Diff<u256>> const& i : _s.storage)
 		if (!i.second.from())
-			_out << endl << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
+			_out << endl
+				 << " +     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to();
 		else if (!i.second.to())
-			_out << endl << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
+			_out << endl
+				 << "XXX    " << (h256)i.first << " (" << std::hex << nouppercase << i.second.from() << ")";
 		else
-			_out << endl << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " (" << i.second.from() << ")";
+			_out << endl
+				 << " *     " << (h256)i.first << ": " << std::hex << nouppercase << i.second.to() << " ("
+				 << i.second.from() << ")";
 	return _out;
 }
 
@@ -84,9 +96,8 @@ std::ostream& operator<<(std::ostream& _out, dev::eth::StateDiff const& _s)
 	_out << _s.accounts.size() << " accounts changed:" << endl;
 	dev::eth::AccountDiff d;
 	_out << d;
-	for (auto const& i: _s.accounts)
+	for (auto const& i : _s.accounts)
 		_out << lead(i.second.changeType()) << "  " << i.first << ": " << i.second << endl;
 	return _out;
 }
-
 }

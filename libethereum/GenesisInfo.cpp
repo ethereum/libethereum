@@ -26,7 +26,7 @@ using namespace eth;
 KeyPair const dev::eth::FluidityTreasure(Secret("a15e7af8ea0a717182d3608e6cdb2bff97ccaad3b6befc8787abe4c937796579"));
 
 std::string const dev::eth::c_genesisInfoFluidity =
-R"ETHEREUM(
+	R"ETHEREUM(
 {
 	"sealEngine": "BasicAuthority",
 	"params": {
@@ -54,7 +54,7 @@ R"ETHEREUM(
 )ETHEREUM";
 
 std::string const dev::eth::c_genesisInfoTestBasicAuthority =
-R"E(
+	R"E(
 {
 	"sealEngine": "BasicAuthority",
 	"params": {

@@ -42,36 +42,29 @@ const char* BlockQueueTraceChannel::name() { return EthOrange "▣ ▶"; }
 size_t const c_maxKnownCount = 100000;
 size_t const c_maxKnownSize = 128 * 1024 * 1024;
 size_t const c_maxUnknownCount = 100000;
-size_t const c_maxUnknownSize = 512 * 1024 * 1024; // Block size can be ~50kb
+size_t const c_maxUnknownSize = 512 * 1024 * 1024;  // Block size can be ~50kb
 
-BlockQueue::BlockQueue():
-	m_unknownSize(0),
-	m_knownSize(0),
-	m_unknownCount(0),
-	m_knownCount(0)
+BlockQueue::BlockQueue() : m_unknownSize(0), m_knownSize(0), m_unknownCount(0), m_knownCount(0)
 {
 	// Allow some room for other activity
 	unsigned verifierThreads = std::max(thread::hardware_concurrency(), 3U) - 2U;
 	for (unsigned i = 0; i < verifierThreads; ++i)
-		m_verifiers.emplace_back([=](){
-			setThreadName("verifier" + toString(i));
-			this->verifierBody();
-		});
+		m_verifiers.emplace_back([=]()
+								 {
+									 setThreadName("verifier" + toString(i));
+									 this->verifierBody();
+								 });
 }
 
-BlockQueue::~BlockQueue()
-{
-	stop();
-}
+BlockQueue::~BlockQueue() { stop(); }
 
 void BlockQueue::stop()
 {
 	DEV_GUARDED(m_verification)
-		m_deleting = true;
+	m_deleting = true;
 
 	m_moreToVerify.notify_all();
-	for (auto& i: m_verifiers)
-		i.join();
+	for (auto& i : m_verifiers) i.join();
 	m_verifiers.clear();
 }
 
@@ -104,9 +97,11 @@ void BlockQueue::verifierBody()
 
 		{
 			unique_lock<Mutex> l(m_verification);
-			m_moreToVerify.wait(l, [&](){ return !m_unverified.empty() || m_deleting; });
-			if (m_deleting)
-				return;
+			m_moreToVerify.wait(l, [&]()
+								{
+									return !m_unverified.empty() || m_deleting;
+								});
+			if (m_deleting) return;
 			swap(work, m_unverified.front());
 			m_unverified.pop_front();
 			BlockHeader bi;
@@ -136,7 +131,8 @@ void BlockQueue::verifierBody()
 					goto OK1;
 				}
 			cwarn << "BlockQueue missing our job: was there a GM?";
-			OK1:;
+		OK1:
+			;
 			drainVerified_WITH_BOTH_LOCKS();
 			continue;
 		}
@@ -162,18 +158,18 @@ void BlockQueue::verifierBody()
 			}
 			else
 			{
-				for (auto& i: m_verifying)
+				for (auto& i : m_verifying)
 					if (i.verified.info.sha3Uncles() == work.hash)
 					{
 						i = move(res);
 						goto OK;
 					}
 				cwarn << "BlockQueue missing our job: was there a GM?";
-				OK:;
+			OK:
+				;
 			}
 		}
-		if (ready)
-			m_onReady();
+		if (ready) m_onReady();
 	}
 }
 
@@ -212,8 +208,10 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 	BlockHeader bi;
 	try
 	{
-		// TODO: quick verification of seal - will require BlockQueue to be templated on SealEngine
-		// VERIFY: populates from the block and checks the block is internally coherent.
+		// TODO: quick verification of seal - will require BlockQueue to be
+		// templated on SealEngine
+		// VERIFY: populates from the block and checks the block is internally
+		// coherent.
 		bi = m_bc->verifyBlock(_block, m_onBad, ImportRequirements::PostGenesis).info;
 	}
 	catch (Exception const& _e)
@@ -236,18 +234,19 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 
 	// Check it's not in the future
 	(void)_isOurs;
-	if (bi.timestamp() > utcTime()/* && !_isOurs*/)
+	if (bi.timestamp() > utcTime() /* && !_isOurs*/)
 	{
 		m_future.insert(make_pair(bi.timestamp().convert_to<unsigned>(), make_pair(h, _block.toBytes())));
 		char buf[24];
 		time_t bit = bi.timestamp().convert_to<unsigned>();
-		if (strftime(buf, 24, "%X", localtime(&bit)) == 0)
-			buf[0] = '\0'; // empty if case strftime fails
-		clog(BlockQueueTraceChannel) << "OK - queued for future [" << bi.timestamp() << "vs" << utcTime() << "] - will wait until" << buf;
+		if (strftime(buf, 24, "%X", localtime(&bit)) == 0) buf[0] = '\0';  // empty if case strftime fails
+		clog(BlockQueueTraceChannel) << "OK - queued for future [" << bi.timestamp() << "vs" << utcTime()
+									 << "] - will wait until" << buf;
 		m_unknownSize += _block.size();
 		m_unknownCount++;
 		m_difficulty += bi.difficulty();
-		bool unknown =  !m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) && !m_bc->isKnown(bi.parentHash());
+		bool unknown = !m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) &&
+					   !m_bc->isKnown(bi.parentHash());
 		return unknown ? ImportResult::FutureTimeUnknown : ImportResult::FutureTimeKnown;
 	}
 	else
@@ -260,9 +259,12 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 			// bad parent; this is bad too, note it as such
 			return ImportResult::BadChain;
 		}
-		else if (!m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) && !m_bc->isKnown(bi.parentHash()))
+		else if (!m_readySet.count(bi.parentHash()) && !m_drainingSet.count(bi.parentHash()) &&
+				 !m_bc->isKnown(bi.parentHash()))
 		{
-			// We don't know the parent (yet) - queue it up for later. It'll get resent to us if we find out about its ancestry later on.
+			// We don't know the parent (yet) - queue it up for later. It'll get
+			// resent to us if we find out about its
+			// ancestry later on.
 			clog(BlockQueueTraceChannel) << "OK - queued as unknown parent:" << bi.parentHash();
 			m_unknown.insert(make_pair(bi.parentHash(), make_pair(h, _block.toBytes())));
 			m_unknownSet.insert(h);
@@ -277,7 +279,7 @@ ImportResult BlockQueue::import(bytesConstRef _block, bool _isOurs)
 			// If valid, append to blocks.
 			clog(BlockQueueTraceChannel) << "OK - ready for chain insertion.";
 			DEV_GUARDED(m_verification)
-				m_unverified.push_back(UnverifiedBlock { h, bi.parentHash(), _block.toBytes() });
+			m_unverified.push_back(UnverifiedBlock{h, bi.parentHash(), _block.toBytes()});
 			m_moreToVerify.notify_one();
 			m_readySet.insert(h);
 			m_knownSize += _block.size();
@@ -303,7 +305,7 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 			moreBad = false;
 			std::deque<VerifiedBlock> oldVerified;
 			swap(m_verified, oldVerified);
-			for (auto& b: oldVerified)
+			for (auto& b : oldVerified)
 				if (m_knownBad.count(b.verified.info.parentHash()) || m_knownBad.count(b.verified.info.hash()))
 				{
 					m_knownBad.insert(b.verified.info.hash());
@@ -316,7 +318,7 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 
 			std::deque<UnverifiedBlock> oldUnverified;
 			swap(m_unverified, oldUnverified);
-			for (auto& b: oldUnverified)
+			for (auto& b : oldUnverified)
 				if (m_knownBad.count(b.parentHash) || m_knownBad.count(b.hash))
 				{
 					m_knownBad.insert(b.hash);
@@ -329,7 +331,7 @@ void BlockQueue::updateBad_WITH_LOCK(h256 const& _bad)
 
 			std::deque<VerifiedBlock> oldVerifying;
 			swap(m_verifying, oldVerifying);
-			for (auto& b: oldVerifying)
+			for (auto& b : oldVerifying)
 				if (m_knownBad.count(b.verified.info.parentHash()) || m_knownBad.count(b.verified.info.sha3Uncles()))
 				{
 					h256 const& h = b.blockData.size() != 0 ? b.verified.info.hash() : b.verified.info.sha3Uncles();
@@ -375,8 +377,7 @@ bool BlockQueue::doneDrain(h256s const& _bad)
 	{
 		// at least one of them was bad.
 		m_knownBad += _bad;
-		for (h256 const& b: _bad)
-			updateBad_WITH_LOCK(b);
+		for (h256 const& b : _bad) updateBad_WITH_LOCK(b);
 	}
 	return !m_readySet.empty();
 }
@@ -386,14 +387,12 @@ void BlockQueue::tick()
 	vector<pair<h256, bytes>> todo;
 	{
 		UpgradableGuard l(m_lock);
-		if (m_future.empty())
-			return;
+		if (m_future.empty()) return;
 
 		cblockq << "Checking past-future blocks...";
 
 		uint64_t t = utcTime();
-		if (t < m_future.begin()->first)
-			return;
+		if (t < m_future.begin()->first) return;
 
 		cblockq << "Past-future blocks ready.";
 
@@ -412,11 +411,11 @@ void BlockQueue::tick()
 	}
 	cblockq << "Importing" << todo.size() << "past-future blocks.";
 
-	for (auto const& b: todo)
-		import(&b.second);
+	for (auto const& b : todo) import(&b.second);
 }
 
-template <class T> T advanced(T _t, unsigned _n)
+template <class T>
+T advanced(T _t, unsigned _n)
 {
 	std::advance(_t, _n);
 	return _t;
@@ -425,27 +424,17 @@ template <class T> T advanced(T _t, unsigned _n)
 QueueStatus BlockQueue::blockStatus(h256 const& _h) const
 {
 	ReadGuard l(m_lock);
-	return
-		m_readySet.count(_h) ?
-			QueueStatus::Ready :
-		m_drainingSet.count(_h) ?
-			QueueStatus::Importing :
-		m_unknownSet.count(_h) ?
-			QueueStatus::UnknownParent :
-		m_knownBad.count(_h) ?
-			QueueStatus::Bad :
-			QueueStatus::Unknown;
+	return m_readySet.count(_h) ? QueueStatus::Ready : m_drainingSet.count(_h)
+														   ? QueueStatus::Importing
+														   : m_unknownSet.count(_h)
+																 ? QueueStatus::UnknownParent
+																 : m_knownBad.count(_h) ? QueueStatus::Bad
+																						: QueueStatus::Unknown;
 }
 
-bool BlockQueue::knownFull() const
-{
-	return m_knownSize > c_maxKnownSize || m_knownCount > c_maxKnownCount;
-}
+bool BlockQueue::knownFull() const { return m_knownSize > c_maxKnownSize || m_knownCount > c_maxKnownCount; }
 
-bool BlockQueue::unknownFull() const
-{
-	return m_unknownSize > c_maxUnknownSize || m_unknownCount > c_maxUnknownCount;
-}
+bool BlockQueue::unknownFull() const { return m_unknownSize > c_maxUnknownSize || m_unknownCount > c_maxUnknownCount; }
 
 void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 {
@@ -460,13 +449,13 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 			DEV_GUARDED(m_verification)
 			{
 				o_out.resize(min<unsigned>(_max, m_verified.size()));
-				for (unsigned i = 0; i < o_out.size(); ++i)
-					swap(o_out[i], m_verified[i]);
+				for (unsigned i = 0; i < o_out.size(); ++i) swap(o_out[i], m_verified[i]);
 				m_verified.erase(m_verified.begin(), advanced(m_verified.begin(), o_out.size()));
 			}
-			for (auto const& bs: o_out)
+			for (auto const& bs : o_out)
 			{
-				// TODO: @optimise use map<h256, bytes> rather than vector<bytes> & set<h256>.
+				// TODO: @optimise use map<h256, bytes> rather than vector<bytes> &
+				// set<h256>.
 				auto h = bs.verified.info.hash();
 				m_drainingSet.insert(h);
 				m_drainingDifficulty += bs.verified.info.difficulty();
@@ -476,8 +465,7 @@ void BlockQueue::drain(VerifiedBlocks& o_out, unsigned _max)
 			}
 		}
 	}
-	if (wasFull && !knownFull())
-		m_onRoomAvailable();
+	if (wasFull && !knownFull()) m_onRoomAvailable();
 }
 
 bool BlockQueue::invariants() const
@@ -486,7 +474,8 @@ bool BlockQueue::invariants() const
 	if (!(m_readySet.size() == m_verified.size() + m_unverified.size() + m_verifying.size()))
 	{
 		std::stringstream s;
-		s << "Failed BlockQueue invariant: m_readySet: " << m_readySet.size() << " m_verified: " << m_verified.size() << " m_unverified: " << m_unverified.size() << " m_verifying" << m_verifying.size();
+		s << "Failed BlockQueue invariant: m_readySet: " << m_readySet.size() << " m_verified: " << m_verified.size()
+		  << " m_unverified: " << m_unverified.size() << " m_verifying" << m_verifying.size();
 		BOOST_THROW_EXCEPTION(FailedInvariant() << errinfo_comment(s.str()));
 	}
 	return true;
@@ -504,7 +493,7 @@ void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
 		for (auto it = r.first; it != r.second; ++it)
 		{
 			DEV_GUARDED(m_verification)
-				m_unverified.push_back(UnverifiedBlock { it->second.first, it->first, it->second.second });
+			m_unverified.push_back(UnverifiedBlock{it->second.first, it->first, it->second.second});
 			m_knownSize += it->second.second.size();
 			m_knownCount++;
 			m_unknownSize -= it->second.second.size();
@@ -517,8 +506,7 @@ void BlockQueue::noteReady_WITH_LOCK(h256 const& _good)
 		}
 		m_unknown.erase(r.first, r.second);
 	}
-	if (notify)
-		m_moreToVerify.notify_all();
+	if (notify) m_moreToVerify.notify_all();
 }
 
 void BlockQueue::retryAllUnknown()
@@ -528,7 +516,7 @@ void BlockQueue::retryAllUnknown()
 	for (auto it = m_unknown.begin(); it != m_unknown.end(); ++it)
 	{
 		DEV_GUARDED(m_verification)
-			m_unverified.push_back(UnverifiedBlock { it->second.first, it->first, it->second.second });
+		m_unverified.push_back(UnverifiedBlock{it->second.first, it->first, it->second.second});
 		auto newReady = it->second.first;
 		m_unknownSet.erase(newReady);
 		m_readySet.insert(newReady);
@@ -564,15 +552,13 @@ u256 BlockQueue::difficulty() const
 bool BlockQueue::isActive() const
 {
 	UpgradableGuard l(m_lock);
-	if (m_readySet.empty() && m_drainingSet.empty())
-		DEV_GUARDED(m_verification)
-			if (m_verified.empty() && m_verifying.empty() && m_unverified.empty())
-				return false;
+	if (m_readySet.empty() && m_drainingSet.empty()) DEV_GUARDED(m_verification)
+	if (m_verified.empty() && m_verifying.empty() && m_unverified.empty()) return false;
 	return true;
 }
 
-std::ostream& dev::eth::operator<< (std::ostream& os, QueueStatus const& obj)
+std::ostream& dev::eth::operator<<(std::ostream& os, QueueStatus const& obj)
 {
-   os << static_cast<std::underlying_type<QueueStatus>::type>(obj);
-   return os;
+	os << static_cast<std::underlying_type<QueueStatus>::type>(obj);
+	return os;
 }

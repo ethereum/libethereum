@@ -37,18 +37,23 @@ uint64_t toUnsigned(js::mValue const& _v)
 {
 	switch (_v.type())
 	{
-	case js::int_type: return _v.get_uint64();
-	case js::str_type: return fromBigEndian<uint64_t>(fromHex(_v.get_str()));
-	default: return 0;
+		case js::int_type:
+			return _v.get_uint64();
+		case js::str_type:
+			return fromBigEndian<uint64_t>(fromHex(_v.get_str()));
+		default:
+			return 0;
 	}
 }
 
-AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _defaultNonce, AccountMaskMap* o_mask, PrecompiledContractMap* o_precompiled)
+AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _defaultNonce, AccountMaskMap* o_mask,
+									  PrecompiledContractMap* o_precompiled)
 {
-	auto u256Safe = [](std::string const& s) -> u256 {
+	auto u256Safe = [](std::string const& s) -> u256
+	{
 		bigint ret(s);
 		if (ret >= bigint(1) << 256)
-			BOOST_THROW_EXCEPTION(ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256") );
+			BOOST_THROW_EXCEPTION(ValueTooLarge() << errinfo_comment("State value is equal or greater than 2**256"));
 		return (u256)ret;
 	};
 
@@ -57,7 +62,8 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 	js::mValue val;
 	json_spirit::read_string(_json, val);
 	js::mObject o = val.get_obj();
-	for (auto const& account: o.count("alloc") ? o["alloc"].get_obj() : o.count("accounts") ? o["accounts"].get_obj() : o)
+	for (auto const& account :
+		 o.count("alloc") ? o["alloc"].get_obj() : o.count("accounts") ? o["accounts"].get_obj() : o)
 	{
 		Address a(fromHex(account.first));
 		auto o = account.second.get_obj();
@@ -86,7 +92,8 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 				if (o["code"].type() == json_spirit::str_type)
 				{
 					if (o["code"].get_str().find("0x") != 0)
-						cerr << "Error importing code of account " << a << "! Code needs to be hex bytecode prefixed by \"0x\".";
+						cerr << "Error importing code of account " << a
+							 << "! Code needs to be hex bytecode prefixed by \"0x\".";
 					else
 						ret[a].setCode(fromHex(o["code"].get_str().substr(2)));
 				}
@@ -97,14 +104,15 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 				ret[a] = Account(nonce, balance, Account::NormalCreation);
 
 			if (haveStorage)
-				for (pair<string, js::mValue> const& j: o["storage"].get_obj())
+				for (pair<string, js::mValue> const& j : o["storage"].get_obj())
 					ret[a].setStorage(u256(j.first), u256(j.second.get_str()));
 		}
 
 		if (o_mask)
 		{
 			(*o_mask)[a] = AccountMask(haveBalance, haveNonce, haveCode, haveStorage, shouldNotExists);
-			if (!haveStorage && !haveCode && !haveNonce && !haveBalance && shouldNotExists) //defined only shouldNotExists field
+			if (!haveStorage && !haveCode && !haveNonce && !haveBalance &&
+				shouldNotExists)  // defined only shouldNotExists field
 				ret[a] = Account(0, 0, Account::NormalCreation);
 		}
 
@@ -119,13 +127,15 @@ AccountMap dev::eth::jsonToAccountMap(std::string const& _json, u256 const& _def
 					auto l = p["linear"].get_obj();
 					unsigned base = toUnsigned(l["base"]);
 					unsigned word = toUnsigned(l["word"]);
-					o_precompiled->insert(make_pair(a, PrecompiledContract(base, word, PrecompiledRegistrar::executor(n))));
+					o_precompiled->insert(
+						make_pair(a, PrecompiledContract(base, word, PrecompiledRegistrar::executor(n))));
 				}
 			}
 			catch (ExecutorNotFound)
 			{
 				// Oh dear - missing a plugin?
-				cwarn << "Couldn't create a precompiled contract account. Missing an executor called:" << n;
+				cwarn << "Couldn't create a precompiled contract account. Missing an "
+						 "executor called:" << n;
 				throw;
 			}
 		}

@@ -31,26 +31,26 @@
 
 namespace dev
 {
-
 class RLPStream;
 
 namespace eth
 {
-
 class EthereumHost;
 class BlockQueue;
 class EthereumPeer;
 
 /**
  * @brief Base BlockChain synchronization strategy class.
- * Syncs to peers and keeps up to date. Base class handles blocks downloading but does not contain any details on state transfer logic.
+ * Syncs to peers and keeps up to date. Base class handles blocks downloading
+ * but does not contain any details on state
+ * transfer logic.
  */
-class BlockChainSync: public HasInvariants
+class BlockChainSync : public HasInvariants
 {
 public:
 	BlockChainSync(EthereumHost& _host);
 	~BlockChainSync();
-	void abortSync(); ///< Abort all sync activity
+	void abortSync();  ///< Abort all sync activity
 
 	/// @returns true is Sync is in progress
 	bool isSyncing() const;
@@ -103,9 +103,9 @@ private:
 private:
 	struct Header
 	{
-		bytes data;		///< Header data
-		h256 hash;		///< Block hash
-		h256 parent;	///< Parent hash
+		bytes data;   ///< Header data
+		h256 hash;	///< Block hash
+		h256 parent;  ///< Parent hash
 	};
 
 	/// Used to identify header by transactions and uncles hashes
@@ -133,23 +133,28 @@ private:
 	};
 
 	EthereumHost& m_host;
-	Handler<> m_bqRoomAvailable;				///< Triggered once block queue has space for more blocks
+	Handler<> m_bqRoomAvailable;  ///< Triggered once block queue has space for
+	/// more blocks
 	mutable RecursiveMutex x_sync;
-	SyncState m_state = SyncState::Idle;		///< Current sync state
-	h256Hash m_knownNewHashes; 					///< New hashes we know about use for logging only
-	unsigned m_startingBlock = 0;      	    	///< Last block number for the start of sync
-	unsigned m_highestBlock = 0;       	     	///< Highest block number seen
-	std::unordered_set<unsigned> m_downloadingHeaders;		///< Set of block body numbers being downloaded
-	std::unordered_set<unsigned> m_downloadingBodies;		///< Set of block header numbers being downloaded
-	std::map<unsigned, std::vector<Header>> m_headers;	    ///< Downloaded headers
-	std::map<unsigned, std::vector<bytes>> m_bodies;	    ///< Downloaded block bodies
-	std::map<std::weak_ptr<EthereumPeer>, std::vector<unsigned>, std::owner_less<std::weak_ptr<EthereumPeer>>> m_headerSyncPeers; ///< Peers to m_downloadingSubchain number map
-	std::map<std::weak_ptr<EthereumPeer>, std::vector<unsigned>, std::owner_less<std::weak_ptr<EthereumPeer>>> m_bodySyncPeers; ///< Peers to m_downloadingSubchain number map
+	SyncState m_state = SyncState::Idle;				///< Current sync state
+	h256Hash m_knownNewHashes;							///< New hashes we know about use for logging only
+	unsigned m_startingBlock = 0;						///< Last block number for the start of sync
+	unsigned m_highestBlock = 0;						///< Highest block number seen
+	std::unordered_set<unsigned> m_downloadingHeaders;  ///< Set of block body numbers being downloaded
+	std::unordered_set<unsigned> m_downloadingBodies;   ///< Set of block header numbers being downloaded
+	std::map<unsigned, std::vector<Header>> m_headers;  ///< Downloaded headers
+	std::map<unsigned, std::vector<bytes>> m_bodies;	///< Downloaded block bodies
+	std::map<std::weak_ptr<EthereumPeer>, std::vector<unsigned>,
+			 std::owner_less<std::weak_ptr<EthereumPeer>>>
+		m_headerSyncPeers;  ///< Peers to m_downloadingSubchain number map
+	std::map<std::weak_ptr<EthereumPeer>, std::vector<unsigned>,
+			 std::owner_less<std::weak_ptr<EthereumPeer>>>
+		m_bodySyncPeers;  ///< Peers to m_downloadingSubchain number map
 	std::unordered_map<HeaderId, unsigned, HeaderIdHash> m_headerIdToNumber;
-	bool m_haveCommonHeader = false;			///< True if common block for our and remote chain has been found
-	unsigned m_lastImportedBlock = 0; 			///< Last imported block number
-	h256 m_lastImportedBlockHash; 			///< Last imported block hash
-	u256 m_syncingTotalDifficulty;				///< Highest peer difficulty
+	bool m_haveCommonHeader = false;   ///< True if common block for our and remote chain has been found
+	unsigned m_lastImportedBlock = 0;  ///< Last imported block number
+	h256 m_lastImportedBlockHash;	  ///< Last imported block hash
+	u256 m_syncingTotalDifficulty;	 ///< Highest peer difficulty
 
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
@@ -158,6 +163,5 @@ private:
 };
 
 std::ostream& operator<<(std::ostream& _out, SyncStatus const& _sync);
-
 }
 }

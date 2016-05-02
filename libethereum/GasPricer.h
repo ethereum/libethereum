@@ -27,7 +27,6 @@ namespace dev
 {
 namespace eth
 {
-
 class Block;
 class BlockChain;
 
@@ -54,11 +53,11 @@ public:
 	virtual void update(BlockChain const&) {}
 };
 
-class TrivialGasPricer: public GasPricer
+class TrivialGasPricer : public GasPricer
 {
 public:
 	TrivialGasPricer() = default;
-	TrivialGasPricer(u256 const& _ask, u256 const& _bid): m_ask(_ask), m_bid(_bid) {}
+	TrivialGasPricer(u256 const& _ask, u256 const& _bid) : m_ask(_ask), m_bid(_bid) {}
 
 	void setAsk(u256 const& _ask) { m_ask = _ask; }
 	void setBid(u256 const& _bid) { m_bid = _bid; }
@@ -71,6 +70,5 @@ private:
 	u256 m_ask = DefaultGasPrice;
 	u256 m_bid = DefaultGasPrice;
 };
-
 }
 }

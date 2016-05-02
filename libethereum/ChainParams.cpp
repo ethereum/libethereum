@@ -34,22 +34,19 @@ using namespace dev;
 using namespace eth;
 namespace js = json_spirit;
 
-
 ChainParams::ChainParams()
 {
-	for (unsigned i = 1; i <= 4; ++i)
-		genesisState[Address(i)] = Account(0, 1);
+	for (unsigned i = 1; i <= 4; ++i) genesisState[Address(i)] = Account(0, 1);
 	// Setup default precompiled contracts as equal to genesis of Frontier.
-	precompiled.insert(make_pair(Address(1), PrecompiledContract(3000, 0, PrecompiledRegistrar::executor("ecrecover"))));
+	precompiled.insert(
+		make_pair(Address(1), PrecompiledContract(3000, 0, PrecompiledRegistrar::executor("ecrecover"))));
 	precompiled.insert(make_pair(Address(2), PrecompiledContract(60, 12, PrecompiledRegistrar::executor("sha256"))));
-	precompiled.insert(make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"))));
+	precompiled.insert(
+		make_pair(Address(3), PrecompiledContract(600, 120, PrecompiledRegistrar::executor("ripemd160"))));
 	precompiled.insert(make_pair(Address(4), PrecompiledContract(15, 3, PrecompiledRegistrar::executor("identity"))));
 }
 
-ChainParams::ChainParams(string const& _json, h256 const& _stateRoot)
-{
-	*this = loadConfig(_json, _stateRoot);
-}
+ChainParams::ChainParams(string const& _json, h256 const& _stateRoot) { *this = loadConfig(_json, _stateRoot); }
 
 ChainParams ChainParams::loadConfig(string const& _json, h256 const& _stateRoot) const
 {
@@ -65,8 +62,9 @@ ChainParams ChainParams::loadConfig(string const& _json, h256 const& _stateRoot)
 	cp.maximumExtraDataSize = u256(fromBigEndian<u256>(fromHex(params["maximumExtraDataSize"].get_str())));
 	cp.tieBreakingGas = params.count("tieBreakingGas") ? params["tieBreakingGas"].get_bool() : true;
 	cp.blockReward = u256(fromBigEndian<u256>(fromHex(params["blockReward"].get_str())));
-	for (auto i: params)
-		if (i.first != "accountStartNonce" && i.first != "maximumExtraDataSize" && i.first != "blockReward" && i.first != "tieBreakingGas")
+	for (auto i : params)
+		if (i.first != "accountStartNonce" && i.first != "maximumExtraDataSize" && i.first != "blockReward" &&
+			i.first != "tieBreakingGas")
 			cp.otherParams[i.first] = i.second.get_str();
 	// genesis
 	string genesisStr = json_spirit::write_string(obj["genesis"], false);
@@ -95,7 +93,8 @@ ChainParams ChainParams::loadGenesis(string const& _json, h256 const& _stateRoot
 
 	cp.parentHash = h256(genesis["parentHash"].get_str());
 	cp.author = genesis.count("coinbase") ? h160(genesis["coinbase"].get_str()) : h160(genesis["author"].get_str());
-	cp.difficulty = genesis.count("difficulty") ? u256(fromBigEndian<u256>(fromHex(genesis["difficulty"].get_str()))) : 0;
+	cp.difficulty =
+		genesis.count("difficulty") ? u256(fromBigEndian<u256>(fromHex(genesis["difficulty"].get_str()))) : 0;
 	cp.gasLimit = u256(fromBigEndian<u256>(fromHex(genesis["gasLimit"].get_str())));
 	cp.gasUsed = genesis.count("gasUsed") ? u256(fromBigEndian<u256>(fromHex(genesis["gasUsed"].get_str()))) : 0;
 	cp.timestamp = u256(fromBigEndian<u256>(fromHex(genesis["timestamp"].get_str())));
@@ -117,8 +116,7 @@ SealEngineFace* ChainParams::createSealEngine()
 {
 	SealEngineFace* ret = SealEngineRegistrar::create(sealEngineName);
 	assert(ret && "Seal engine not found");
-	if (!ret)
-		return nullptr;
+	if (!ret) return nullptr;
 	ret->setChainParams(*this);
 	if (sealRLP.empty())
 	{
@@ -142,8 +140,7 @@ void ChainParams::populateFromGenesis(bytes const& _genesisRLP, AccountMap const
 	RLP r(_genesisRLP);
 	sealFields = r[0].itemCount() - BlockHeader::BasicFields;
 	sealRLP.clear();
-	for (unsigned i = BlockHeader::BasicFields; i < r[0].itemCount(); ++i)
-		sealRLP += r[0][i].data();
+	for (unsigned i = BlockHeader::BasicFields; i < r[0].itemCount(); ++i) sealRLP += r[0][i].data();
 
 	calculateStateRoot(true);
 
@@ -166,7 +163,7 @@ h256 ChainParams::calculateStateRoot(bool _force) const
 	if (!stateRoot || _force)
 	{
 		// TODO: use hash256
-		//stateRoot = hash256(toBytesMap(gs));
+		// stateRoot = hash256(toBytesMap(gs));
 		dev::eth::commit(genesisState, state);
 		stateRoot = state.root();
 	}
@@ -179,20 +176,12 @@ bytes ChainParams::genesisBlock() const
 
 	calculateStateRoot();
 
-	block.appendList(BlockHeader::BasicFields + sealFields)
-			<< parentHash
-			<< EmptyListSHA3	// sha3(uncles)
-			<< author
-			<< stateRoot
-			<< EmptyTrie		// transactions
-			<< EmptyTrie		// receipts
-			<< LogBloom()
-			<< difficulty
-			<< 0				// number
-			<< gasLimit
-			<< gasUsed			// gasUsed
-			<< timestamp
-			<< extraData;
+	block.appendList(BlockHeader::BasicFields + sealFields) << parentHash << EmptyListSHA3		 // sha3(uncles)
+															<< author << stateRoot << EmptyTrie  // transactions
+															<< EmptyTrie						 // receipts
+															<< LogBloom() << difficulty << 0	 // number
+															<< gasLimit << gasUsed				 // gasUsed
+															<< timestamp << extraData;
 	block.appendRaw(sealRLP, sealFields);
 	block.appendRaw(RLPEmptyList);
 	block.appendRaw(RLPEmptyList);

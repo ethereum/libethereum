@@ -39,24 +39,26 @@
 
 namespace dev
 {
-
 class RLPStream;
 
 namespace eth
 {
-
 class TransactionQueue;
 class BlockQueue;
 class BlockChainSync;
 
-struct EthereumHostTrace: public LogChannel { static const char* name(); static const int verbosity = 6; };
+struct EthereumHostTrace : public LogChannel
+{
+	static const char* name();
+	static const int verbosity = 6;
+};
 
 /**
  * @brief The EthereumHost class
  * @warning None of this is thread-safe. You have been warned.
  * @doWork Syncs to peers and sends new blocks and transactions.
  */
-class EthereumHost: public p2p::HostCapability<EthereumPeer>, Worker
+class EthereumHost : public p2p::HostCapability<EthereumPeer>, Worker
 {
 public:
 	/// Start server, but don't listen.
@@ -99,9 +101,16 @@ public:
 private:
 	static char const* const s_stateNames[static_cast<int>(SyncState::Size)];
 
-	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<p2p::Session>>> randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*){ return true; });
+	std::tuple<std::vector<std::shared_ptr<EthereumPeer>>, std::vector<std::shared_ptr<EthereumPeer>>,
+			   std::vector<std::shared_ptr<p2p::Session>>>
+	randomSelection(unsigned _percent = 25, std::function<bool(EthereumPeer*)> const& _allow = [](EthereumPeer const*)
+											{
+												return true;
+											});
 
-	/// Sync with the BlockChain. It might contain one of our mined blocks, we might have new candidates from the network.
+	/// Sync with the BlockChain. It might contain one of our mined blocks, we
+	/// might have new candidates from the
+	/// network.
 	virtual void doWork() override;
 
 	void maintainTransactions();
@@ -111,7 +120,9 @@ private:
 	///	Check to see if the network peer-state initialisation has happened.
 	bool isInitialised() const { return (bool)m_latestBlockSent; }
 
-	/// Initialises the network peer-state, doing the stuff that needs to be once-only. @returns true if it really was first.
+	/// Initialises the network peer-state, doing the stuff that needs to be
+	/// once-only. @returns true if it really was
+	/// first.
 	bool ensureInitialised();
 
 	virtual void onStarting() override { startWorking(); }
@@ -120,9 +131,12 @@ private:
 	BlockChainSync* sync();
 
 	BlockChain const& m_chain;
-	OverlayDB const& m_db;					///< References to DB, needed for some of the Ethereum Protocol responses.
-	TransactionQueue& m_tq;					///< Maintains a list of incoming transactions not yet in a block on the blockchain.
-	BlockQueue& m_bq;						///< Maintains a list of incoming blocks not yet on the blockchain (to be imported).
+	OverlayDB const& m_db;  ///< References to DB, needed for some of the Ethereum
+	/// Protocol responses.
+	TransactionQueue& m_tq;  ///< Maintains a list of incoming transactions not yet
+	/// in a block on the blockchain.
+	BlockQueue& m_bq;  ///< Maintains a list of incoming blocks not yet on the
+	/// blockchain (to be imported).
 
 	u256 m_networkId;
 
@@ -137,9 +151,8 @@ private:
 	mutable RecursiveMutex x_sync;
 	mutable Mutex x_transactions;
 	std::unique_ptr<BlockChainSync> m_sync;
-	std::atomic<time_t> m_syncStart = { 0 };
-	std::atomic<time_t> m_lastTick = { 0 };
+	std::atomic<time_t> m_syncStart = {0};
+	std::atomic<time_t> m_lastTick = {0};
 };
-
 }
 }

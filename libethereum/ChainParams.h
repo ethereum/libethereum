@@ -31,16 +31,18 @@ namespace dev
 {
 namespace eth
 {
-
 class SealEngineFace;
 
-struct ChainParams: public ChainOperationParams
+struct ChainParams : public ChainOperationParams
 {
 	ChainParams();
 	ChainParams(ChainParams const& /*_org*/) = default;
 	ChainParams(std::string const& _s, h256 const& _stateRoot = h256());
 	ChainParams(bytes const& _genesisRLP, AccountMap const& _state) { populateFromGenesis(_genesisRLP, _state); }
-	ChainParams(std::string const& _json, bytes const& _genesisRLP, AccountMap const& _state): ChainParams(_json) { populateFromGenesis(_genesisRLP, _state); }
+	ChainParams(std::string const& _json, bytes const& _genesisRLP, AccountMap const& _state) : ChainParams(_json)
+	{
+		populateFromGenesis(_genesisRLP, _state);
+	}
 
 	SealEngineFace* createSealEngine();
 
@@ -52,7 +54,9 @@ struct ChainParams: public ChainOperationParams
 	u256 gasUsed = 0;
 	u256 timestamp = 0;
 	bytes extraData;
-	mutable h256 stateRoot;	///< Only pre-populate if known equivalent to genesisState's root. If they're different Bad Things Will Happen.
+	mutable h256 stateRoot;  ///< Only pre-populate if known equivalent to
+	/// genesisState's root. If they're different Bad
+	/// Things Will Happen.
 	AccountMap genesisState;
 
 	unsigned sealFields = 0;
@@ -64,12 +68,11 @@ struct ChainParams: public ChainOperationParams
 	bytes genesisBlock() const;
 	/// load config/genesis
 	ChainParams loadConfig(std::string const& _json, h256 const& _stateRoot = h256()) const;
-	ChainParams loadGenesisState(std::string const& _json,  h256 const& _stateRoot = h256()) const;
+	ChainParams loadGenesisState(std::string const& _json, h256 const& _stateRoot = h256()) const;
 	ChainParams loadGenesis(std::string const& _json, h256 const& _stateRoot = h256()) const;
 
 private:
 	void populateFromGenesis(bytes const& _genesisRLP, AccountMap const& _state);
 };
-
 }
 }
