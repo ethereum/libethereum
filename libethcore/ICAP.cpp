@@ -111,7 +111,19 @@ std::string ICAP::encoded() const
 {
 	if (m_type == Direct)
 	{
+#ifdef __INTEL_COMPILER
+// TODO: Resolve template functions cleanly with intel platform
+		static char const* c_alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+		typename FixedHash<Address::size>::Arith a = m_direct;
+		std::string d;
+		for (; a > 0; a /= 36)
+		{
+			unsigned r = (a - a / 36 * 36).convert_to<unsigned>(); // boost's % is broken
+			d = c_alphabet[r] + d;
+		}
+#else
 		std::string d = toBase36<Address::size>(m_direct);
+#endif
 		while (d.size() < 30)		// always 34, sometimes 35.
 			d = "0" + d;
 		return iban("XE", d);
