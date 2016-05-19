@@ -227,14 +227,14 @@ protected:
 	void noteChanged(h256Hash const& _filters);
 
 	/// Submit
-	bool submitSealed(bytes const& _s);
+	virtual bool submitSealed(bytes const& _s);
 
 protected:
 	/// Called when Worker is starting.
 	void startedWorking() override;
 
 	/// Do some work. Handles blockchain maintenance and sealing.
-	void doWork(bool _doWait);
+	virtual void doWork(bool _doWait);
 	void doWork() override { doWork(true); }
 
 	/// Called when Worker is exiting.
@@ -247,7 +247,7 @@ protected:
 	void onDeadBlocks(h256s const& _blocks, h256Hash& io_changed);
 
 	/// Called on chain changes
-	void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
+	virtual void onNewBlocks(h256s const& _blocks, h256Hash& io_changed);
 
 	/// Called after processing blocks by onChainChanged(_ir)
 	void resyncStateFromChain();
