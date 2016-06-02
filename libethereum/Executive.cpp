@@ -61,7 +61,7 @@ bool changesStorage(Instruction _inst)
 	return _inst == Instruction::SSTORE;
 }
 
-void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
+void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
 {
 	ExtVM const& ext = dynamic_cast<ExtVM const&>(*voidExt);
 	VM& vm = *voidVM;
@@ -69,12 +69,9 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	Json::Value r(Json::objectValue);
 
 	Json::Value stack(Json::arrayValue);
-	if (!m_options.disableStack)
-	{
-		for (auto const& i: vm.stack())
-			stack.append("0x" + toHex(toCompactBigEndian(i, 1)));
-		r["stack"] = stack;
-	}
+	for (auto const& i: vm.stack())
+		stack.append("0x" + toHex(toCompactBigEndian(i, 1)));
+	r["stack"] = stack;
 
 	bool returned = false;
 	bool newContext = false;
@@ -108,18 +105,15 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 		m_lastInst.resize(ext.depth + 1);
 	}
 
-	Json::Value memJson(Json::arrayValue);
-	if (!m_options.disableMemory && (changesMemory(lastInst) || newContext))
+	if (changesMemory(lastInst) || newContext)
 	{
-		for (unsigned i = 0; i < vm.memory().size(); i += 32)
-		{
-			bytesConstRef memRef(vm.memory().data() + i, 32);
-			memJson.append(toHex(memRef, 2, HexPrefix::DontAdd));
-		}
-		r["memory"] = memJson;
+		if (vm.memory().size() < 1024)
+			r["memory"] = toHex(vm.memory());
+		else
+			r["sha3memory"] = sha3(vm.memory()).hex();
 	}
 
-	if (!m_options.disableStorage && (m_options.fullStorage || changesStorage(lastInst) || newContext))
+	if (changesStorage(lastInst) || newContext)
 	{
 		Json::Value storage(Json::objectValue);
 		for (auto const& i: ext.state().storage(ext.myAddress))
@@ -132,11 +126,12 @@ void StandardTrace::operator()(uint64_t _steps, Instruction inst, bigint newMemS
 	if (newContext)
 		r["address"] = ext.myAddress.hex();
 	r["steps"] = (unsigned)_steps;
+	r["inst"] = (unsigned)inst;
 	if (m_showMnemonics)
-		r["op"] = instructionInfo(inst).name;
-	r["pc"] = toString(vm.curPC());
+		r["instname"] = instructionInfo(inst).name;
+	r["pc"] = toString(PC);
 	r["gas"] = toString(gas);
-	r["gasCost"] = toString(gasCost);
+	r["gascost"] = toString(gasCost);
 	if (!!newMemSize)
 		r["memexpand"] = toString(newMemSize);
 
@@ -322,7 +317,7 @@ bool Executive::create(Address _sender, u256 _endowment, u256 _gasPrice, u256 _g
 
 OnOpFunc Executive::simpleTrace()
 {
-	return [](uint64_t steps, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
+	return [](uint64_t steps, uint64_t PC, Instruction inst, bigint newMemSize, bigint gasCost, bigint gas, VM* voidVM, ExtVMFace const* voidExt)
 	{
 		ExtVM const& ext = *static_cast<ExtVM const*>(voidExt);
 		VM& vm = *voidVM;
@@ -336,7 +331,7 @@ OnOpFunc Executive::simpleTrace()
 		for (auto const& i: ext.state().storage(ext.myAddress))
 			o << showbase << hex << i.first << ": " << i.second << endl;
 		dev::LogOutputStream<VMTraceChannel, false>() << o.str();
-		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << vm.curPC() << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
+		dev::LogOutputStream<VMTraceChannel, false>() << " < " << dec << ext.depth << " : " << ext.myAddress << " : #" << steps << " : " << hex << setw(4) << setfill('0') << PC << " : " << instructionInfo(inst).name << " : " << dec << gas << " : -" << dec << gasCost << " : " << newMemSize << "x32" << " >";
 	};
 }
 
