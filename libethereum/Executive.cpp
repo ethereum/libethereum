@@ -69,11 +69,13 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 	Json::Value r(Json::objectValue);
 
 	Json::Value stack(Json::arrayValue);
-	for (auto const& i: vm.stack())
-		stack.append("0x" + toHex(toCompactBigEndian(i, 1)));
-	r["stack"] = stack;
+	if (!m_options.disableStack)
+	{
+		for (auto const& i: vm.stack())
+			stack.append("0x" + toHex(toCompactBigEndian(i, 1)));
+		r["stack"] = stack;
+	}
 
-	bool returned = false;
 	bool newContext = false;
 	Instruction lastInst = Instruction::STOP;
 
@@ -88,9 +90,9 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 	else if (m_lastInst.size() == ext.depth + 2)
 	{
 		// returned from old context
-		returned = true;
 		m_lastInst.pop_back();
 		lastInst = m_lastInst.back();
+		r["calldata"] = "0x" + toHex(ext.data.toBytes());
 	}
 	else if (m_lastInst.size() == ext.depth + 1)
 	{
@@ -105,15 +107,18 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 		m_lastInst.resize(ext.depth + 1);
 	}
 
-	if (changesMemory(lastInst) || newContext)
+	Json::Value memJson(Json::arrayValue);
+	if (!m_options.disableMemory && (changesMemory(lastInst) || newContext))
 	{
-		if (vm.memory().size() < 1024)
-			r["memory"] = toHex(vm.memory());
-		else
-			r["sha3memory"] = sha3(vm.memory()).hex();
+		for (unsigned i = 0; i < vm.memory().size(); i += 32)
+		{
+			bytesConstRef memRef(vm.memory().data() + i, 32);
+			memJson.append(toHex(memRef, 2, HexPrefix::DontAdd));
+		}
+		r["memory"] = memJson;
 	}
 
-	if (changesStorage(lastInst) || newContext)
+	if (!m_options.disableStorage && (m_options.fullStorage || changesStorage(lastInst) || newContext))
 	{
 		Json::Value storage(Json::objectValue);
 		for (auto const& i: ext.state().storage(ext.myAddress))
@@ -121,17 +126,12 @@ void StandardTrace::operator()(uint64_t _steps, uint64_t PC, Instruction inst, b
 		r["storage"] = storage;
 	}
 
-	if (returned || newContext)
-		r["depth"] = ext.depth;
-	if (newContext)
-		r["address"] = ext.myAddress.hex();
 	r["steps"] = (unsigned)_steps;
-	r["inst"] = (unsigned)inst;
 	if (m_showMnemonics)
-		r["instname"] = instructionInfo(inst).name;
+		r["op"] = instructionInfo(inst).name;
 	r["pc"] = toString(PC);
 	r["gas"] = toString(gas);
-	r["gascost"] = toString(gasCost);
+	r["gasCost"] = toString(gasCost);
 	if (!!newMemSize)
 		r["memexpand"] = toString(newMemSize);
 
