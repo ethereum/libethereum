@@ -26,12 +26,12 @@ using namespace dev;
 using namespace dev::eth;
 
 
-template<class T> static rmword to_rmword(T v)
+template<class T> static uint64_t to_word63(T v)
 {
 	// check for overflow
 	if (v > 0x7FFFFFFFFFFFFFFF)
 		throwVMException(OutOfGas());
-	rmword w = rmword(v); 
+	uint64_t w = uint64_t(v); 
 	return w;
 }
 
@@ -48,9 +48,9 @@ uint64_t VM::verifyJumpDest(u256 const& _dest)
 };
 
 
-static rmword memNeed(vmword _offset, vmword _size)
+static uint64_t memNeed(u256 _offset, u256 _size)
 {
-	return to_rmword(_size ? (uoword)_offset + _size : uoword(0));
+	return to_word63(_size ? u512(_offset) + _size : u512(0));
 };
 
 static void memMax(u256& mem)
@@ -62,12 +62,12 @@ static void memMax(u256& mem)
 
 template <class S> S divWorkaround(S const& _a, S const& _b)
 {
-	return (S)(soword(_a) / soword(_b));
+	return (S)(s512(_a) / s512(_b));
 }
 
 template <class S> S modWorkaround(S const& _a, S const& _b)
 {
-	return (S)(soword(_a) % soword(_b));
+	return (S)(s512(_a) % s512(_b));
 }
 
 
@@ -75,7 +75,7 @@ template <class S> S modWorkaround(S const& _a, S const& _b)
 //
 // interpreter entry point
 
-bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
+bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	uint64_t PC = 0;
 	u256* SP = m_stack - 1;
@@ -85,7 +85,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 	InstructionMetric metric = c_metrics[0];
 
 	m_schedule = &_ext.evmSchedule();
-	rmword runGas = 0, newTempSize = 0, copySize = 0;
+	uint64_t runGas = 0, newTempSize = 0, copySize = 0;
 
 	makeJumpDestTable(_ext);
 	
@@ -97,32 +97,22 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 	auto onOperation = [&]()
 	{
 		if (_onOp)
-			_onOp(++nSteps, PC, inst, newTempSize > m_mem.size() ? (newTempSize - m_mem.size()) / 32 : rmword(0), runGas, io_gas, this, &_ext);
+			_onOp(++nSteps, PC, inst, newTempSize > m_mem.size() ? (newTempSize - m_mem.size()) / 32 : uint64_t(0), runGas, io_gas, this, &_ext);
 	};
 
 	m_onFail = std::function<void()>(onOperation);
 	
 	auto checkStack = [&](unsigned _n, unsigned _d)
 	{
-		const size_t size = 1 + SP - m_stack;
-		if ((size) < _n)
-		{
-			if (m_onFail)
-				m_onFail();
-			throwVMException(StackUnderflow() << RequirementError((bigint)_n, (bigint)size));
-		}
-		if ((size) - _n + _d > 1024)
-		{
-			if (m_onFail)
-				m_onFail();
-			throwVMException(OutOfStack() << RequirementError((bigint)(_d - _n), (bigint)size));
-		}
+		const int size = 1 + SP - m_stack, usedSize = size - _n;
+		if (usedSize < 0 || usedSize + _d > 1024)
+			throwVMStackException(size, _n, _d);
 	};
 
-	auto gasForMem = [&](uoword _size) -> uoword
+	auto gasForMem = [&](u512 _size) -> u512
 	{
-		uoword s = _size / 32;
-		return to_rmword((uoword)m_schedule->memoryGas * s + s * s / m_schedule->quadCoeffDiv);
+		u512 s = _size / 32;
+		return to_word63(u512(m_schedule->memoryGas) * s + s * s / m_schedule->quadCoeffDiv);
 	};
 	
 	auto resetIOGas = [&]() {
@@ -133,7 +123,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 	
 	auto resetGas = [&]() {
 		if (newTempSize > m_mem.size())
-			runGas += to_rmword(gasForMem(newTempSize) - gasForMem(m_mem.size())) ;
+			runGas += to_word63(gasForMem(newTempSize) - gasForMem(m_mem.size())) ;
 		runGas += (m_schedule->copyGas * ((copySize + 31) / 32));
 		if (io_gas < runGas)
 			throwVMException(OutOfGas());
@@ -150,7 +140,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 	auto logGasMem = [&](Instruction inst)
 	{
 		unsigned n = (unsigned)inst - (unsigned)Instruction::LOG0;
-		runGas = to_rmword(m_schedule->logGas + m_schedule->logTopicGas * n + u512(m_schedule->logDataGas) * *(SP-1));
+		runGas = to_word63(m_schedule->logGas + m_schedule->logTopicGas * n + u512(m_schedule->logDataGas) * *(SP-1));
 		newTempSize = memNeed(*SP, *(SP-1));
 		resetMem();
 	};
@@ -163,7 +153,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 	auto case_create = [&]()
 	{
 		newTempSize = memNeed(*(SP-1), *(SP-2));
-		runGas = to_rmword(m_schedule->createGas);
+		runGas = to_word63(m_schedule->createGas);
 		resetMem();
 		onOperation();
 		resetIOGas();
@@ -180,13 +170,13 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 	
 	auto case_call = [&]()
 	{
-		runGas = to_rmword(u512(*SP) + m_schedule->callGas);
+		runGas = to_word63(u512(*SP) + m_schedule->callGas);
 	
 		if (inst == Instruction::CALL && !_ext.exists(asAddress(*(SP-1))))
-			runGas += to_rmword(m_schedule->callNewAccountGas);
+			runGas += to_word63(m_schedule->callNewAccountGas);
 	
 		if (inst != Instruction::DELEGATECALL && *(SP-2) > 0)
-			runGas += to_rmword(m_schedule->callValueTransferGas);
+			runGas += to_word63(m_schedule->callValueTransferGas);
 	
 		unsigned sizesOffset = inst == Instruction::DELEGATECALL ? 3 : 4;
 		newTempSize = std::max(
@@ -252,7 +242,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 		checkStack(metric.args, metric.ret);
 		
 		// FEES...
-		runGas = to_rmword(m_schedule->tierStepGas[metric.gasPriceTier]);
+		runGas = to_word63(m_schedule->tierStepGas[metric.gasPriceTier]);
 		newTempSize = m_mem.size();
 		copySize = 0;
 		
@@ -316,19 +306,19 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 		case Instruction::MLOAD:
 		{
 			memMax(*SP);
-			newTempSize = to_rmword(*SP) + 32;
+			newTempSize = to_word63(*SP) + 32;
 			resetMem();
 			onOperation();
 			resetIOGas();
 
-			*SP = (vmword)*(h256 const*)(m_mem.data() + (unsigned)*SP);
+			*SP = (u256)*(h256 const*)(m_mem.data() + (unsigned)*SP);
 			break;
 		}
 
 		case Instruction::MSTORE:
 		{
 			memMax(*SP);
-			newTempSize = to_rmword(*SP) + 32;
+			newTempSize = to_word63(*SP) + 32;
 			resetMem();
 			onOperation();
 			resetIOGas();
@@ -341,7 +331,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 		case Instruction::MSTORE8:
 		{
 			memMax(*SP);
-			newTempSize = to_rmword(*SP) + 1;
+			newTempSize = to_word63(*SP) + 1;
 			resetMem();
 			onOperation();
 			resetIOGas();
@@ -353,7 +343,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 
 		case Instruction::SHA3:
 		{
-			runGas = to_rmword(m_schedule->sha3Gas + (u512(*(SP-1)) + 31) / 32 * m_schedule->sha3WordGas);
+			runGas = to_word63(m_schedule->sha3Gas + (u512(*(SP-1)) + 31) / 32 * m_schedule->sha3WordGas);
 			newTempSize = memNeed(*SP, *(SP-1));
 			resetMem();
 			onOperation();
@@ -412,13 +402,13 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 		case Instruction::EXP:
 		{
 			auto expon = *(SP-1);
-			runGas = to_rmword(m_schedule->expGas + m_schedule->expByteGas * (32 - (h256(expon).firstBitSet() / 8)));
+			runGas = to_word63(m_schedule->expGas + m_schedule->expByteGas * (32 - (h256(expon).firstBitSet() / 8)));
 			resetMem();
 			onOperation();
 			resetIOGas();
 
 			auto base = *SP--;
-			*SP = (vmword)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(1) << 256);
+			*SP = (u256)boost::multiprecision::powm((bigint)base, (bigint)expon, bigint(1) << 256);
 			break;
 		}
 
@@ -575,7 +565,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			onOperation();
 			resetIOGas();
 
-			*(SP-2) = *(SP-2) ? vmword((u512(*SP) + u512(*(SP-1))) % *(SP-2)) : 0;
+			*(SP-2) = *(SP-2) ? u256((u512(*SP) + u512(*(SP-1))) % *(SP-2)) : 0;
 			SP -= 2;
 			break;
 
@@ -583,7 +573,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			onOperation();
 			resetIOGas();
 
-			*(SP-2) = *(SP-2) ? vmword((u512(*SP) * u512(*(SP-1))) % *(SP-2)) : 0;
+			*(SP-2) = *(SP-2) ? u256((u512(*SP) * u512(*(SP-1))) % *(SP-2)) : 0;
 			SP -= 2;
 			break;
 
@@ -594,8 +584,8 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			if (*SP < 31)
 			{
 				auto testBit = static_cast<unsigned>(*SP) * 8 + 7;
-				vmword& number = *(SP-1);
-				vmword mask = ((vmword(1) << testBit) - 1);
+				u256& number = *(SP-1);
+				u256 mask = ((u256(1) << testBit) - 1);
 				if (boost::multiprecision::bit_test(number, testBit))
 					number |= ~mask;
 				else
@@ -648,15 +638,15 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			resetIOGas();
 
 			if (u512(*SP) + 31 < _ext.data.size())
-				*SP = (vmword)*(h256 const*)(_ext.data.data() + (size_t)*SP);
+				*SP = (u256)*(h256 const*)(_ext.data.data() + (size_t)*SP);
 			else if (*SP >= _ext.data.size())
-				*SP = vmword(0);
+				*SP = u256(0);
 			else
 			{
 				h256 r;
 				for (uint64_t i = (unsigned)*SP, e = (unsigned)*SP + (uint64_t)32, j = 0; i < e; ++i, ++j)
 					r[j] = i < _ext.data.size() ? _ext.data[i] : 0;
-				*SP = (vmword)r;
+				*SP = (u256)r;
 			}
 			break;
 		}
@@ -683,7 +673,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			break;
 
 		case Instruction::CALLDATACOPY:
-			copySize = to_rmword(*(SP-2));
+			copySize = to_word63(*(SP-2));
 			newTempSize = memNeed(*SP, *(SP-2));
 			resetMem();
 			onOperation();
@@ -693,7 +683,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			break;
 
 		case Instruction::CODECOPY:
-			copySize = to_rmword(*(SP-2));
+			copySize = to_word63(*(SP-2));
 			newTempSize = memNeed(*SP, *(SP-2));
 			resetMem();
 			onOperation();
@@ -704,7 +694,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 
 		case Instruction::EXTCODECOPY:
 		{
-			copySize = to_rmword(*(SP-3));
+			copySize = to_word63(*(SP-3));
 			newTempSize = memNeed(*(SP-1), *(SP-3));
 			resetMem();
 			onOperation();
@@ -727,7 +717,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 			onOperation();
 			resetIOGas();
 
-			*SP = (vmword)_ext.blockHash(*SP);
+			*SP = (u256)_ext.blockHash(*SP);
 			break;
 
 		case Instruction::COINBASE:
@@ -890,7 +880,7 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 		}
 
 		case Instruction::SLOAD:
-			runGas = to_rmword(m_schedule->sloadGas);
+			runGas = to_word63(m_schedule->sloadGas);
 			onOperation();
 			resetIOGas();
 
@@ -899,14 +889,14 @@ bytesConstRef VM::execImpl(vmword& io_gas, ExtVMFace& _ext, OnOpFunc const& _onO
 
 		case Instruction::SSTORE:
 			if (!_ext.store(*SP) && *(SP-1))
-				runGas = to_rmword(m_schedule->sstoreSetGas);
+				runGas = to_word63(m_schedule->sstoreSetGas);
 			else if (_ext.store(*SP) && !*(SP-1))
 			{
-				runGas = to_rmword(m_schedule->sstoreResetGas);
+				runGas = to_word63(m_schedule->sstoreResetGas);
 				_ext.sub.refunds += m_schedule->sstoreRefundGas;
 			}
 			else
-				runGas = to_rmword(m_schedule->sstoreResetGas);
+				runGas = to_word63(m_schedule->sstoreResetGas);
 			onOperation();
 			resetIOGas();
 	
