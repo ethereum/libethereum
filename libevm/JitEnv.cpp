@@ -6,7 +6,6 @@ extern "C"
 {
 	#ifdef _MSC_VER
 		#define EXPORT __declspec(dllexport)
-		#pragma warning(disable: 4190)  // MSVC 2013 complains about using i256 type on extern "C" functions.
 	#else
 		#define EXPORT
 	#endif
@@ -33,15 +32,15 @@ extern "C"
 		_env->setStore(index, value);	// Interface uses native endianness
 	}
 
-	EXPORT i256 env_balance(ExtVMFace* _env, h256 _address)
+	EXPORT void env_balance(ExtVMFace* _env, h256* _address, i256* o_value)
 	{
-		auto u = _env->balance(right160(_address));
-		return eth2jit(u);
+		auto u = _env->balance(right160(*_address));
+		*o_value = eth2jit(u);
 	}
 
-	EXPORT evmjit::h256 env_blockhash(ExtVMFace* _env, i256 _number)
+	EXPORT void env_blockhash(ExtVMFace* _env, i256* _number, h256* o_hash)
 	{
-		return eth2jit(_env->blockHash(jit2eth(_number)));
+		*o_hash = _env->blockHash(jit2eth(*_number));
 	}
 
 	EXPORT void env_create(ExtVMFace* _env, int64_t* io_gas, i256* _endowment, byte* _initBeg, uint64_t _initSize, h256* o_address)

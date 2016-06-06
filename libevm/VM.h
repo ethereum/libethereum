@@ -46,6 +46,15 @@ inline u256 fromAddress(Address _a)
 	return (u160)_a;
 }
 
+
+struct InstructionMetric
+{
+	int gasPriceTier;
+	int args;
+	int ret;
+};
+
+
 /**
  */
 class VM: public VMFace
@@ -53,27 +62,36 @@ class VM: public VMFace
 public:
 	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
-	uint64_t curPC() const { return m_curPC; }
-
-	bytes const& memory() const { return m_temp; }
-	u256s const& stack() const { return m_stack; }
+	bytes const& memory() const { return m_mem; }
+	u256s stack() const { assert(m_stack <= *m_pSP+1); return u256s(m_stack, *m_pSP+1); };
+	
+	VM(): m_stack_vector(1025), m_stack(m_stack_vector.data()+1) {};
 
 private:
-	void checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, Instruction _inst);
-	void require(u256 _n, u256 _d);
-	void requireMem(unsigned _n) { if (m_temp.size() < _n) { m_temp.resize(_n); } }
-	static uint64_t verifyJumpDest(u256 const& _dest, std::vector<uint64_t> const& _validDests);
-	void copyDataToMemory(bytesConstRef _data);
-	uint64_t execOrdinaryOpcode(Instruction _inst, u256& io_gas, ExtVMFace& _ext);
 
-	uint64_t m_curPC = 0;
-	uint64_t m_steps = 0;
-	bytes m_temp;
-	u256s m_stack;
-	std::vector<uint64_t> m_jumpDests;
+	static std::array<InstructionMetric, 256> metrics();
+	void makeJumpDestTable(ExtVMFace& _ext);
+	uint64_t verifyJumpDest(u256 const& _dest);
+	void copyDataToMemory(bytesConstRef _data, u256*& SP);
+	void checkRequirements(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp, Instruction _inst);
+	void requireMem(unsigned _n) { if (m_mem.size() < _n) { m_mem.resize(_n); } }
+	void throwVMStackException(unsigned _size, unsigned _n, unsigned _d);
+
+	std::unordered_set<uint64_t> m_jumpDests;
 	std::function<void()> m_onFail;
 	EVMSchedule const* m_schedule = nullptr;
+
+	// space for memory
+	bytes m_mem;
+
+	// space for stack
+	u256s m_stack_vector;
+	u256* m_stack;
+	u256** m_pSP = 0;
+	
 };
+
+void throwVMException(VMException);
 
 }
 }
