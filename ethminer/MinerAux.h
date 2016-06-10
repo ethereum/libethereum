@@ -523,7 +523,7 @@ private:
 					solution = sol;
 					return completed = true;
 				});
-				while(true)
+				for (unsigned i = 0; !completed; ++i)
 				{
 					auto mp = f.miningProgress();
 					f.resetMiningProgress();
