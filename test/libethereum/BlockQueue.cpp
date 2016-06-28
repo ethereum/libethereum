@@ -34,28 +34,36 @@ BOOST_FIXTURE_TEST_SUITE(BlockQueueSuite, TestOutputHelper)
 
 BOOST_AUTO_TEST_CASE(BlockQueueImport)
 {
+	std::cout << "init" << std::endl;
 	TestBlock genesisBlock = TestBlockChain::defaultGenesisBlock();
 	TestBlockChain blockchain(genesisBlock);
 	TestBlockChain blockchain2(genesisBlock);
 
+	std::cout << "block1" << std::endl;
 	TestBlock block1;
 	TestTransaction transaction1 = TestTransaction::defaultTransaction(1);
 	block1.addTransaction(transaction1);
+	std::cout << "will mine" << std::endl;
 	block1.mine(blockchain);
+	std::cout << "finish mining" << std::endl;
 
+	std::cout << "blockQueue" << std::endl;
 	BlockQueue blockQueue;
 	blockQueue.setChain(blockchain.interface());
 	ImportResult res = blockQueue.import(&block1.bytes());
 	BOOST_REQUIRE_MESSAGE(res == ImportResult::Success, "Simple block import to BlockQueue should have return Success");
 
+	std::cout << "blockQueue import 2" << std::endl;
 	res = blockQueue.import(&block1.bytes());
 	BOOST_REQUIRE_MESSAGE(res == ImportResult::AlreadyKnown, "Simple block import to BlockQueue should have return AlreadyKnown");
 
+	std::cout << "blockQueue clear" << std::endl;
 	blockQueue.clear();
 	blockchain.addBlock(block1);	
 	res = blockQueue.import(&block1.bytes());
 	BOOST_REQUIRE_MESSAGE(res == ImportResult::AlreadyInChain, "Simple block import to BlockQueue should have return AlreadyInChain");
 
+	std::cout << "block2" << std::endl;
 	TestBlock block2;
 	block2.mine(blockchain);
 	BlockHeader block2Header = block2.blockHeader();
@@ -65,6 +73,7 @@ BOOST_AUTO_TEST_CASE(BlockQueueImport)
 	res = blockQueue.import(&block2.bytes());
 	BOOST_REQUIRE_MESSAGE(res == ImportResult::FutureTimeKnown, "Simple block import to BlockQueue should have return FutureTimeKnown");
 
+	std::cout << "block3" << std::endl;
 	TestBlock block3;
 	block3.mine(blockchain);
 	BlockHeader block3Header = block3.blockHeader();
@@ -73,6 +82,7 @@ BOOST_AUTO_TEST_CASE(BlockQueueImport)
 	res = blockQueue.import(&block3.bytes());
 	BOOST_REQUIRE_MESSAGE(res == ImportResult::Malformed, "Simple block import to BlockQueue should have return Malformed");
 
+	std::cout << "block4" << std::endl;
 	TestBlock block4;
 	block4.mine(blockchain2);
 	blockchain2.addBlock(block4);
@@ -85,11 +95,13 @@ BOOST_AUTO_TEST_CASE(BlockQueueImport)
 	res = blockQueue.import(&block5.bytes());
 	BOOST_REQUIRE_MESSAGE(res == ImportResult::FutureTimeUnknown, "Simple block import to BlockQueue should have return FutureTimeUnknown");
 
+	std::cout << "blockQueue clear" << std::endl;
 	blockQueue.clear();
 	TestBlock block3a;
 	block3a.mine(blockchain2);
 	blockchain2.addBlock(block3a);
 
+	std::cout << "block3b" << std::endl;
 	TestBlock block3b;
 	block3b.mine(blockchain2);
 	BlockHeader block3bHeader = block3b.blockHeader();
