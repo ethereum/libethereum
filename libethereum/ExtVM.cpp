@@ -101,12 +101,12 @@ bool ExtVM::call(CallParameters& _p)
 		go(depth, e, _p.onOp);
 		e.accrueSubState(sub);
 	}
-	_p.gas = e.gas();
+	_p.gas = uint64_t(e.gas());
 
 	return !e.excepted();
 }
 
-h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc const& _onOp)
+h160 ExtVM::create(u256 _endowment, uint64_t& io_gas, bytesConstRef _code, OnOpFunc const& _onOp)
 {
 	// Increment associated nonce for sender.
 	m_s.noteSending(myAddress);
@@ -117,6 +117,6 @@ h160 ExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _code, OnOpFunc 
 		go(depth, e, _onOp);
 		e.accrueSubState(sub);
 	}
-	io_gas = e.gas();
+	io_gas = uint64_t(e.gas());
 	return e.newAddress();
 }

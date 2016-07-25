@@ -158,7 +158,7 @@ struct CallParameters
 	Address receiveAddress;
 	u256 valueTransfer;
 	u256 apparentValue;
-	u256 gas;
+	uint64_t gas;
 	bytesConstRef data;
 	bytesRef out;
 	OnOpFunc onOp;
@@ -257,7 +257,7 @@ public:
 	virtual void suicide(Address) { sub.suicides.insert(myAddress); }
 
 	/// Create a new (contract) account.
-	virtual h160 create(u256, u256&, bytesConstRef, OnOpFunc const&) { return h160(); }
+	virtual h160 create(u256, uint64_t&, bytesConstRef, OnOpFunc const&) { return h160(); }
 
 	/// Make a new message call.
 	virtual bool call(CallParameters&) { return false; }
