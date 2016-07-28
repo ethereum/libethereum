@@ -139,7 +139,7 @@ void VM::logGasMem(Instruction inst)
 //
 // interpreter entry point
 
-bytesConstRef VM::execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
+bytesConstRef VM::execImpl(uint64_t& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp)
 {
 	m_io_gas = &io_gas;
 	m_ext = &_ext;
@@ -214,7 +214,7 @@ bool VM::caseCallSetup(CallParameters *callParams)
 	onOperation();
 	updateIOGas();
 
-	callParams->gas = *m_SP;
+	callParams->gas = uint64_t(*m_SP);
 	if (m_inst != Instruction::DELEGATECALL && *(m_SP - 2) > 0)
 		callParams->gas += m_schedule->callStipend;
 	--m_SP;

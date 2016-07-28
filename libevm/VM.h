@@ -48,7 +48,7 @@ struct InstructionMetric
 class VM: public VMFace
 {
 public:
-	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
+	virtual bytesConstRef execImpl(uint64_t& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) override final;
 
 	bytes const& memory() const { return m_mem; }
 	u256s stack() const { assert(m_stack <= m_SP + 1); return u256s(m_stack, m_SP + 1); };
@@ -57,7 +57,7 @@ public:
 
 private:
 
-	u256* m_io_gas = 0;
+	uint64_t* m_io_gas = 0;
 	ExtVMFace* m_ext = 0;
 	OnOpFunc const* m_onOp = 0;
 

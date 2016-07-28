@@ -37,7 +37,7 @@ FakeExtVM::FakeExtVM(EnvInfo const& _envInfo, unsigned _depth):			/// TODO: XXX:
 	ExtVMFace(_envInfo, Address(), Address(), Address(), 0, 1, bytesConstRef(), bytes(), EmptySHA3, _depth)
 {}
 
-h160 FakeExtVM::create(u256 _endowment, u256& io_gas, bytesConstRef _init, OnOpFunc const&)
+h160 FakeExtVM::create(u256 _endowment, uint64_t& io_gas, bytesConstRef _init, OnOpFunc const&)
 {
 	Address na = right160(sha3(rlpList(myAddress, get<1>(addresses[myAddress]))));
 
@@ -184,6 +184,7 @@ void FakeExtVM::importExec(mObject& _o)
 	gasPrice = toInt(_o["gasPrice"]);
 	gas = toInt(_o["gas"]);
 	execGas = gas;
+	ugas = uint64_t(gas);
 
 	thisTxCode.clear();
 	code = thisTxCode;
@@ -334,7 +335,7 @@ void doVMTests(json_spirit::mValue& _v, bool _fillin)
 			auto vmtrace = Options::get().vmtrace ? fev.simpleTrace() : OnOpFunc{};
 			{
 				Listener::ExecTimeGuard guard{i.first};
-				output = vm->exec(fev.gas, fev, vmtrace);
+				output = vm->exec(fev.ugas, fev, vmtrace);
 			}
 		}
 		catch (VMException const&)

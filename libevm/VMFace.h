@@ -46,19 +46,19 @@ public:
 	/// Execute EVM code by VM.
 	///
 	/// @param _out		Expected output
-	void exec(u256& io_gas, ExtVMFace& _ext, bytesRef _out, OnOpFunc const& _onOp = {})
+	void exec(uint64_t& io_gas, ExtVMFace& _ext, bytesRef _out, OnOpFunc const& _onOp = {})
 	{
 		execImpl(io_gas, _ext, _onOp).copyTo(_out);
 	}
 
 	/// The same as above but returns a copy of full output.
-	bytes exec(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {})
+	bytes exec(uint64_t& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp = {})
 	{
 		return execImpl(io_gas, _ext, _onOp).toVector();
 	}
 
 	/// VM implementation
-	virtual bytesConstRef execImpl(u256& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) = 0;
+	virtual bytesConstRef execImpl(uint64_t& io_gas, ExtVMFace& _ext, OnOpFunc const& _onOp) = 0;
 };
 
 }

@@ -252,7 +252,8 @@ bool Executive::execute()
 
 bool Executive::call(Address _receiveAddress, Address _senderAddress, u256 _value, u256 _gasPrice, bytesConstRef _data, u256 _gas)
 {
-	CallParameters params{_senderAddress, _receiveAddress, _receiveAddress, _value, _value, _gas, _data, {}, {}};
+	uint64_t gas = uint64_t(_gas);
+	CallParameters params{_senderAddress, _receiveAddress, _receiveAddress, _value, _value, gas, _data, {}, {}};
 	return call(params, _gasPrice, _senderAddress);
 }
 
@@ -346,7 +347,8 @@ bool Executive::go(OnOpFunc const& _onOp)
 			auto vm = _onOp ? VMFactory::create(VMKind::Interpreter) : VMFactory::create();
 			if (m_isCreation)
 			{
-				auto out = vm->exec(m_gas, *m_ext, _onOp);
+				uint64_t gas = uint64_t(m_gas);
+				auto out = vm->exec(gas, *m_ext, _onOp);
 				if (m_res)
 				{
 					m_res->gasForDeposit = m_gas;
@@ -375,13 +377,14 @@ bool Executive::go(OnOpFunc const& _onOp)
 			}
 			else
 			{
+				uint64_t gas = uint64_t(m_gas);
 				if (m_res)
 				{
-					m_res->output = vm->exec(m_gas, *m_ext, _onOp); // take full output
+					m_res->output = vm->exec(gas, *m_ext, _onOp); // take full output
 					bytesConstRef{&m_res->output}.copyTo(m_outRef);
 				}
 				else
-					vm->exec(m_gas, *m_ext, m_outRef, _onOp); // take only expected output
+					vm->exec(gas, *m_ext, m_outRef, _onOp); // take only expected output
 			}
 		}
 		catch (VMException const& _e)
