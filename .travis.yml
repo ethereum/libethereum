@@ -1,5 +1,8 @@
 language: cpp
-cache: ccache
+cache:
+    - ccache
+    - directories:
+        - ~/.ethash
 matrix:
     include:
         - os: linux
@@ -17,4 +20,6 @@ branches:
         - master
         - develop
 before_install: ./install_dependencies.sh
-script: ./fetch_umbrella_build_and_test.sh
+script:
+    - ./fetch_umbrella_build.sh
+    - ./webthree-umbrella/build/libethereum/test/testeth --verbosity 2

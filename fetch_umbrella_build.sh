@@ -11,6 +11,5 @@ rm -rf libethereum
 mv ../libethereum .
 mkdir build
 cd build
-cmake .. -DGUI=0 -DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE
+cmake .. -DGUI=0 -DCMAKE_BUILD_TYPE=$TRAVIS_BUILD_TYPE -DEVMJIT=On -DLLVM_DIR=/usr/share/llvm-3.8/cmake
 make -j 2 eth ethvm testeth
-./libethereum/test/testeth

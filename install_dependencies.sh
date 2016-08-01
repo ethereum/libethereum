@@ -47,7 +47,10 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     # on Trusty.
     sudo add-apt-repository -y ppa:ethereum/ethereum
     sudo add-apt-repository -y ppa:ethereum/ethereum-dev
-    sudo apt-add-repository -y ppa:george-edison55/cmake-3.x
+    sudo add-apt-repository -y ppa:george-edison55/cmake-3.x
+    wget -O - http://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+    sudo add-apt-repository -y "deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-3.8 main"
+
     sudo apt-get -y update
 
     # Install binaries for nearly all of our dependencies
@@ -64,7 +67,8 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         libmicrohttpd-dev \
         libminiupnpc-dev \
         libz-dev \
-        opencl-headers
+        opencl-headers \
+        llvm-3.8-dev
 
     # The exception is libjson-rpc-cpp, which we have to build from source for
     # reliable results.   The only binaries available for this package are those
