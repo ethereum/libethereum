@@ -212,6 +212,7 @@ public:
 	bool createRandomTest = false; ///< Generate random test
 	Verbosity logVerbosity = Verbosity::NiceReport;
 	eth::Network sealEngineNetwork = eth::Network::Test; ///< set seal engine (Frontier, Homestead, ...)
+	int testMiningTimeout = 150;///< Max mining time limit for tests in seconds
 
 	/// Test selection
 	/// @{

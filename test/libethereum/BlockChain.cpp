@@ -20,7 +20,8 @@
  * Blockchain test functions.
  */
 
-
+#include <thread>
+#include <future>
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
 #include <test/TestHelper.h>
@@ -60,17 +61,9 @@ BOOST_FIXTURE_TEST_SUITE(BlockChainSuite, TestOutputHelper)
 BOOST_AUTO_TEST_CASE(opendb)
 {
 	TestBlock genesis = TestBlockChain::defaultGenesisBlock();
-
 	TransientDirectory tempDirBlockchain;
 	ChainParams p(genesisInfo(Network::Test), genesis.bytes(), genesis.accountMap());
 	BlockChain bc(p, tempDirBlockchain.path(), WithExisting::Kill);
-
-	Block block = bc.genesisBlock(genesis.state().db());
-	block.sync(bc);
-	dev::eth::mine(block, bc, bc.sealEngine());
-	bc.sealEngine()->verify(JustSeal, block.info());
-	bc.import(block.blockData(), block.state().db());
-
 	auto is_critical = []( std::exception const& _e) { return string(_e.what()).find("DatabaseAlreadyOpen") != string::npos; };
 	BOOST_CHECK_EXCEPTION(BlockChain bc2(p, tempDirBlockchain.path(), WithExisting::Verify), DatabaseAlreadyOpen, is_critical);
 }
@@ -108,106 +101,210 @@ BOOST_AUTO_TEST_CASE(opendb)
 //	BOOST_REQUIRE(bc.number() == 1);
 //}
 
+void testMiningFunc(void(*_testFunc)())
+{
+	int timeout = Options::get().testMiningTimeout;
+	std::thread threadTest(_testFunc);
+	auto future = std::async(std::launch::async, &std::thread::join, &threadTest);
+	if (future.wait_for(std::chrono::seconds(timeout)) == std::future_status::timeout)
+		BOOST_ERROR("Mining Timeout!");
+}
+
+
+BOOST_AUTO_TEST_CASE(Mining_1_mineBlockWithTransaction)
+{
+	auto const threadFunc = []()
+	{
+		try
+		{
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			TestTransaction tr = TestTransaction::defaultTransaction(1); //nonce = 1
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
+			bc.addBlock(block);
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
+}
+
+BOOST_AUTO_TEST_CASE(Mining_2_mineUncles)
+{
+	auto const threadFunc = []()
+	{
+		try
+		{
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			TestTransaction tr = TestTransaction::defaultTransaction(1); //nonce = 1
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
+			bc.addBlock(block);
+
+			TestBlock uncleBlock;
+			uncleBlock.mine(bc);
+			TestBlock uncleBlock2;
+			uncleBlock2.mine(bc);
+
+			TestTransaction tr2 = TestTransaction::defaultTransaction(2);
+			TestBlock block2;
+			block2.addTransaction(tr2);
+			block2.mine(bc);
+			bc.addBlock(block2);
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
+}
+
+BOOST_AUTO_TEST_CASE(Mining_3_mineBlockWithUncles)
+{
+	auto const threadFunc = []()
+	{
+		try
+		{
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			TestTransaction tr = TestTransaction::defaultTransaction(1); //nonce = 1
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
+			bc.addBlock(block);
+
+			TestBlock uncleBlock;
+			uncleBlock.mine(bc);
+			TestBlock uncleBlock2;
+			uncleBlock2.mine(bc);
+
+			TestTransaction tr2 = TestTransaction::defaultTransaction(2);
+			TestBlock block2;
+			block2.addTransaction(tr2);
+			block2.mine(bc);
+			bc.addBlock(block2);
+
+			TestTransaction tr3 = TestTransaction::defaultTransaction(3);
+			TestBlock block3;
+			block3.addUncle(uncleBlock);
+			bc.syncUncles(block3.uncles());
+			block3.addTransaction(tr3);
+			block3.mine(bc);
+			bc.addBlock(block3);
+			BOOST_REQUIRE(bc.interface().info().number() == 3);
+			BOOST_REQUIRE(bc.interface().info(uncleBlock.blockHeader().hash()) == uncleBlock.blockHeader());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
+}
+
+BOOST_AUTO_TEST_CASE(Mining_4_BlockQueueSyncing)
+{
+	auto const threadFunc = []()
+	{
+		try
+		{
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			TestBlockChain bc2(TestBlockChain::defaultGenesisBlock());
+
+			TestBlock block;
+			block.mine(bc2);
+			bc2.addBlock(block);
+			TestBlock block2;
+			block2.mine(bc2);
+
+			BlockQueue uncleBlockQueue;
+			uncleBlockQueue.setChain(bc2.interface());
+			ImportResult importIntoQueue = uncleBlockQueue.import(&block2.bytes(), false);
+			BOOST_REQUIRE(importIntoQueue == ImportResult::Success);
+			this_thread::sleep_for(chrono::seconds(2));
+
+			BlockChain& bcRef = bc.interfaceUnsafe();
+			bcRef.sync(uncleBlockQueue, bc.testGenesis().state().db(), unsigned(4));
+
+			//Attempt import block5 to another blockchain
+			pair<ImportResult, ImportRoute> importAttempt;
+			importAttempt = bcRef.attemptImport(block2.bytes(), bc.testGenesis().state().db());
+			BOOST_REQUIRE(importAttempt.first == ImportResult::UnknownParent);
+
+			//Insert block5 to another blockchain
+			auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
+			BOOST_CHECK_EXCEPTION(bcRef.insert(block2.bytes(), block2.receipts()), UnknownParent, is_critical);
+
+			//Get status of block5 in the block queue based on block5's chain (block5 imported into queue but not imported into chain)
+			//BlockQueue(bc2) changed by sync function of original bc
+			QueueStatus status = uncleBlockQueue.blockStatus(block2.blockHeader().hash());
+			BOOST_REQUIRE_MESSAGE(status == QueueStatus::Bad, "Received Queue Status: " + toString(status) + " Expected Queue Status: " + toString(QueueStatus::Bad));
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
+}
+
+BOOST_AUTO_TEST_CASE(Mining_5_BlockFutureTime)
+{
+	auto const threadFunc = []()
+	{
+		try
+		{
+			dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+
+			TestBlock uncleBlock;
+			uncleBlock.mine(bc);
+
+			BlockHeader uncleHeader = uncleBlock.blockHeader();
+			uncleHeader.setTimestamp(uncleHeader.timestamp() + 10000);
+			uncleBlock.setBlockHeader(uncleHeader);
+			uncleBlock.updateNonce(bc);
+
+			BlockQueue uncleBlockQueue;
+			uncleBlockQueue.setChain(bc.interface());
+			uncleBlockQueue.import(&uncleBlock.bytes(), false);
+			this_thread::sleep_for(chrono::seconds(2));
+
+			BlockChain& bcRef = bc.interfaceUnsafe();
+			bcRef.sync(uncleBlockQueue, bc.testGenesis().state().db(), unsigned(4));
+			BOOST_REQUIRE(uncleBlockQueue.blockStatus(uncleBlock.blockHeader().hash()) == QueueStatus::Unknown);
+
+			pair<ImportResult, ImportRoute> importAttempt;
+			importAttempt = bcRef.attemptImport(uncleBlock.bytes(), bc.testGenesis().state().db());
+			BOOST_REQUIRE(importAttempt.first == ImportResult::FutureTimeKnown);
+
+			auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
+			BOOST_CHECK_EXCEPTION(bcRef.insert(uncleBlock.bytes(), uncleBlock.receipts()), FutureTime, is_critical);
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
+}
+
 // Temporary disable of "sync" test which is repeatedly failing in TravisCI for Ubuntu Trusty.
 #if !defined(ETH_AFTER_REPOSITORY_MERGE)
-BOOST_AUTO_TEST_CASE(sync)
-{
-	dev::test::TestBlockChain::s_sealEngineNetwork = eth::Network::FrontierTest;
-	TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
 
-	//1 block
-	{
-		TestTransaction tr = TestTransaction::defaultTransaction(1);
-		TestBlock block;
-		block.addTransaction(tr);
-		block.mine(bc);
-		bc.addBlock(block);
-	}
-
-	TestBlock uncleBlock;
-	uncleBlock.mine(bc);
-	TestBlock uncleBlock2;
-	uncleBlock2.mine(bc);
-
-	//2 block
-	{
-		TestTransaction tr = TestTransaction::defaultTransaction(2);
-		TestBlock block;
-		block.addTransaction(tr);
-		block.mine(bc);
-		bc.addBlock(block);
-	}
-
-	//3 block (normal uncle)
-	{
-		TestTransaction tr = TestTransaction::defaultTransaction(3);
-		TestBlock block;
-		block.addUncle(uncleBlock);
-		bc.syncUncles(block.uncles());
-		block.addTransaction(tr);
-		block.mine(bc);
-		bc.addBlock(block);
-		BOOST_REQUIRE(bc.interface().info().number() == 3);
-		BOOST_REQUIRE(bc.interface().info(uncleBlock.blockHeader().hash()) == uncleBlock.blockHeader());
-	}
-
-	//4 block unknown parent
-	{
-		TestBlockChain bc2(TestBlockChain::defaultGenesisBlock());
-		TestBlock block;
-		block.mine(bc2);
-		bc2.addBlock(block);
-
-		TestBlock block2;
-		block2.mine(bc2);
-
-		BlockQueue uncleBlockQueue;
-		uncleBlockQueue.setChain(bc2.interface());
-		ImportResult importIntoQueue = uncleBlockQueue.import(&block2.bytes(), false);
-		BOOST_REQUIRE(importIntoQueue == ImportResult::Success);
-		this_thread::sleep_for(chrono::seconds(2));
-
-		BlockChain& bcRef = bc.interfaceUnsafe();
-		bcRef.sync(uncleBlockQueue, bc.testGenesis().state().db(), unsigned(4));
-
-		//Attempt import block2 to another blockchain
-		pair<ImportResult, ImportRoute> importAttempt;
-		importAttempt = bcRef.attemptImport(block2.bytes(), bc.testGenesis().state().db());
-		BOOST_REQUIRE(importAttempt.first == ImportResult::UnknownParent);
-
-		//Insert block2 to another blockchain
-		auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
-		BOOST_CHECK_EXCEPTION(bcRef.insert(block2.bytes(), block2.receipts()), UnknownParent, is_critical);
-
-		//Get status of block2 in the block queue based on block2's chain (block2 imported into queue but not imported into chain)
-		QueueStatus status = uncleBlockQueue.blockStatus(block2.blockHeader().hash());
-		BOOST_REQUIRE_MESSAGE(status == QueueStatus::Bad, "Received Queue Status: " + toString(status) + " Expected Queue Status: " + toString(QueueStatus::Bad));
-	}
-
-	//5 block with future time
-	{
-		BlockHeader uncleHeader = uncleBlock2.blockHeader();
-		uncleHeader.setTimestamp(uncleHeader.timestamp() + 10000);
-		uncleBlock2.setBlockHeader(uncleHeader);
-		uncleBlock2.updateNonce(bc);
-
-		BlockQueue uncleBlockQueue;
-		uncleBlockQueue.setChain(bc.interface());
-		uncleBlockQueue.import(&uncleBlock2.bytes(), false);
-		this_thread::sleep_for(chrono::seconds(2));
-
-		BlockChain& bcRef = bc.interfaceUnsafe();
-		bcRef.sync(uncleBlockQueue, bc.testGenesis().state().db(), unsigned(4));
-		BOOST_REQUIRE(uncleBlockQueue.blockStatus(uncleBlock2.blockHeader().hash()) == QueueStatus::Unknown);
-
-		pair<ImportResult, ImportRoute> importAttempt;
-		importAttempt = bcRef.attemptImport(uncleBlock2.bytes(), bc.testGenesis().state().db());
-		BOOST_REQUIRE(importAttempt.first == ImportResult::FutureTimeKnown);
-
-		auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
-		BOOST_CHECK_EXCEPTION(bcRef.insert(uncleBlock2.bytes(), uncleBlock2.receipts()), FutureTime, is_critical);
-	}
-}
 #endif // !defined(ETH_AFTER_REPOSITORY_MERGE)
 
 bool onBadwasCalled = false;

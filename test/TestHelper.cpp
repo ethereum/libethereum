@@ -953,6 +953,8 @@ Options::Options(int argc, char** argv)
 				rCheckTest += argv[j];
 			break;
 		}
+		else if (arg == "--mininglimit" && i + 1 < argc)
+			testMiningTimeout = atoi(argv[i + 1]);
 	}
 
 	//Default option
