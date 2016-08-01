@@ -20,8 +20,6 @@
  * Blockchain test functions.
  */
 
-#include <thread>
-#include <future>
 #include <libethereum/Block.h>
 #include <libethereum/BlockChain.h>
 #include <test/TestHelper.h>
@@ -37,26 +35,45 @@ using namespace dev::test;
 
 BOOST_FIXTURE_TEST_SUITE(BlockChainSuite, TestOutputHelper)
 
-// THIS TEST GETS STUCK ON TRAVIS
-//BOOST_AUTO_TEST_CASE(output)
-//{
-//	BOOST_WARN(string(BlockChainDebug::name()) == string(EthBlue "☍" EthWhite " ◇"));
-//	BOOST_WARN(string(BlockChainWarn::name()) == string(EthBlue "☍" EthOnRed EthBlackBold " ✘"));
-//	BOOST_WARN(string(BlockChainNote::name()) == string(EthBlue "☍" EthBlue " ℹ"));
-//	BOOST_WARN(string(BlockChainChat::name()) == string(EthBlue "☍" EthWhite " ◌"));
+BOOST_AUTO_TEST_CASE(output)
+{
+	auto const threadFunc = []()
+	{
+		try
+		{
+			BOOST_WARN(string(BlockChainDebug::name()) == string(EthBlue "☍" EthWhite " ◇"));
+			BOOST_WARN(string(BlockChainWarn::name()) == string(EthBlue "☍" EthOnRed EthBlackBold " ✘"));
+			BOOST_WARN(string(BlockChainNote::name()) == string(EthBlue "☍" EthBlue " ℹ"));
+			BOOST_WARN(string(BlockChainChat::name()) == string(EthBlue "☍" EthWhite " ◌"));
 
-//	TestBlock genesis = TestBlockChain::defaultGenesisBlock();
-//	TestBlockChain bc(genesis);
+			TestBlock genesis = TestBlockChain::defaultGenesisBlock();
+			TestBlockChain bc(genesis);
 
-//	TestBlock block;
-//	block.mine(bc);
-//	bc.addBlock(block);
+			TestBlock block;
+			block.mine(bc);
+			bc.addBlock(block);
 
-//	std::stringstream buffer;
-//	buffer << bc.interface();
-//	BOOST_REQUIRE(buffer.str().size() == 139);
-//	buffer.str(std::string());
-//}
+			std::stringstream buffer;
+			buffer << bc.interface();
+			BOOST_REQUIRE(buffer.str().size() == 139);
+			buffer.str(std::string());
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
+}
 
 BOOST_AUTO_TEST_CASE(opendb)
 {
@@ -101,16 +118,6 @@ BOOST_AUTO_TEST_CASE(opendb)
 //	BOOST_REQUIRE(bc.number() == 1);
 //}
 
-void testMiningFunc(void(*_testFunc)())
-{
-	int timeout = Options::get().testMiningTimeout;
-	std::thread threadTest(_testFunc);
-	auto future = std::async(std::launch::async, &std::thread::join, &threadTest);
-	if (future.wait_for(std::chrono::seconds(timeout)) == std::future_status::timeout)
-		BOOST_ERROR("Mining Timeout!");
-}
-
-
 BOOST_AUTO_TEST_CASE(Mining_1_mineBlockWithTransaction)
 {
 	auto const threadFunc = []()
@@ -124,6 +131,15 @@ BOOST_AUTO_TEST_CASE(Mining_1_mineBlockWithTransaction)
 			block.addTransaction(tr);
 			block.mine(bc);
 			bc.addBlock(block);
+			BOOST_REQUIRE(bc.interface().transactions().size() > 0);
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
 		}
 		catch(...)
 		{
@@ -158,6 +174,14 @@ BOOST_AUTO_TEST_CASE(Mining_2_mineUncles)
 			block2.addTransaction(tr2);
 			block2.mine(bc);
 			bc.addBlock(block2);
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
 		}
 		catch(...)
 		{
@@ -202,6 +226,14 @@ BOOST_AUTO_TEST_CASE(Mining_3_mineBlockWithUncles)
 			bc.addBlock(block3);
 			BOOST_REQUIRE(bc.interface().info().number() == 3);
 			BOOST_REQUIRE(bc.interface().info(uncleBlock.blockHeader().hash()) == uncleBlock.blockHeader());
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
 		}
 		catch(...)
 		{
@@ -251,6 +283,14 @@ BOOST_AUTO_TEST_CASE(Mining_4_BlockQueueSyncing)
 			QueueStatus status = uncleBlockQueue.blockStatus(block2.blockHeader().hash());
 			BOOST_REQUIRE_MESSAGE(status == QueueStatus::Bad, "Received Queue Status: " + toString(status) + " Expected Queue Status: " + toString(QueueStatus::Bad));
 		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
 		catch(...)
 		{
 			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
@@ -293,6 +333,14 @@ BOOST_AUTO_TEST_CASE(Mining_5_BlockFutureTime)
 			auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
 			BOOST_CHECK_EXCEPTION(bcRef.insert(uncleBlock.bytes(), uncleBlock.receipts()), FutureTime, is_critical);
 		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
 		catch(...)
 		{
 			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
@@ -301,11 +349,6 @@ BOOST_AUTO_TEST_CASE(Mining_5_BlockFutureTime)
 
 	testMiningFunc(threadFunc);
 }
-
-// Temporary disable of "sync" test which is repeatedly failing in TravisCI for Ubuntu Trusty.
-#if !defined(ETH_AFTER_REPOSITORY_MERGE)
-
-#endif // !defined(ETH_AFTER_REPOSITORY_MERGE)
 
 bool onBadwasCalled = false;
 void onBad(Exception& _ex)
@@ -322,156 +365,255 @@ BOOST_AUTO_TEST_CASE(attemptImport)
 	//FutureTimeKnown
 	//Malformed
 
-	TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+	auto const threadFunc = []()
+	{
+		try
+		{
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
 
-	TestTransaction tr = TestTransaction::defaultTransaction();
-	TestBlock block;
-	block.addTransaction(tr);
-	block.mine(bc);
+			TestTransaction tr = TestTransaction::defaultTransaction();
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
 
-	pair<ImportResult, ImportRoute> importAttempt;
-	BlockChain& bcRef = bc.interfaceUnsafe();
-	bcRef.setOnBad(onBad);
+			pair<ImportResult, ImportRoute> importAttempt;
+			BlockChain& bcRef = bc.interfaceUnsafe();
+			bcRef.setOnBad(onBad);
 
-	importAttempt = bcRef.attemptImport(block.bytes(), bc.testGenesis().state().db());
-	BOOST_REQUIRE(importAttempt.first == ImportResult::Success);
+			importAttempt = bcRef.attemptImport(block.bytes(), bc.testGenesis().state().db());
+			BOOST_REQUIRE(importAttempt.first == ImportResult::Success);
 
-	importAttempt = bcRef.attemptImport(block.bytes(), bc.testGenesis().state().db());
-	BOOST_REQUIRE(importAttempt.first == ImportResult::AlreadyKnown);
+			importAttempt = bcRef.attemptImport(block.bytes(), bc.testGenesis().state().db());
+			BOOST_REQUIRE(importAttempt.first == ImportResult::AlreadyKnown);
 
-	bytes blockBytes = block.bytes();
-	blockBytes[0] = 0;
-	importAttempt = bcRef.attemptImport(blockBytes, bc.testGenesis().state().db());
-	BOOST_REQUIRE(importAttempt.first == ImportResult::Malformed);
-	BOOST_REQUIRE(onBadwasCalled == true);
-	cout << endl;
+			bytes blockBytes = block.bytes();
+			blockBytes[0] = 0;
+			importAttempt = bcRef.attemptImport(blockBytes, bc.testGenesis().state().db());
+			BOOST_REQUIRE(importAttempt.first == ImportResult::Malformed);
+			BOOST_REQUIRE(onBadwasCalled == true);
+			cout << endl;
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
 }
 
 BOOST_AUTO_TEST_CASE(insert)
 {
-	TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
-	TestTransaction tr = TestTransaction::defaultTransaction();
-	TestBlock block;
-	block.addTransaction(tr);
-	block.mine(bc);
-
-	BlockChain& bcRef = bc.interfaceUnsafe();
-
-	//Incorrect Receipt
-	ZeroGasPricer gp;
-	Block bl = bcRef.genesisBlock(bc.testGenesis().state().db());
-	bl.sync(bcRef);
-	bl.sync(bcRef, block.transactionQueue(), gp);
-
-	//Receipt should be RLPStream
-	const bytes receipt = bl.receipt(0).rlp();
-	bytesConstRef receiptRef(&receipt[0], receipt.size());
-
-	auto is_critical = []( std::exception const& _e) { return string(_e.what()).find("InvalidBlockFormat") != string::npos; };
-	BOOST_CHECK_EXCEPTION(bcRef.insert(bl.blockData(), receiptRef), InvalidBlockFormat, is_critical);
-	auto is_critical2 = []( std::exception const& _e) { return string(_e.what()).find("InvalidReceiptsStateRoot") != string::npos; };
-	BOOST_CHECK_EXCEPTION(bcRef.insert(block.bytes(), receiptRef), InvalidReceiptsStateRoot, is_critical2);
-
-	BOOST_REQUIRE(bcRef.number() == 0);
-
-	try
+	auto const threadFunc = []()
 	{
-		bcRef.insert(block.bytes(), block.receipts());
-	}
-	catch(...)
-	{
-		BOOST_ERROR("Unexpected Exception!");
-	}
+		try
+		{
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			TestTransaction tr = TestTransaction::defaultTransaction();
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
 
-	//And so what? (how to restore blockchain from inserted blocks?
+			BlockChain& bcRef = bc.interfaceUnsafe();
+
+			//Incorrect Receipt
+			ZeroGasPricer gp;
+			Block bl = bcRef.genesisBlock(bc.testGenesis().state().db());
+			bl.sync(bcRef);
+			bl.sync(bcRef, block.transactionQueue(), gp);
+
+			//Receipt should be RLPStream
+			const bytes receipt = bl.receipt(0).rlp();
+			bytesConstRef receiptRef(&receipt[0], receipt.size());
+
+			auto is_critical = []( std::exception const& _e) { return string(_e.what()).find("InvalidBlockFormat") != string::npos; };
+			BOOST_CHECK_EXCEPTION(bcRef.insert(bl.blockData(), receiptRef), InvalidBlockFormat, is_critical);
+			auto is_critical2 = []( std::exception const& _e) { return string(_e.what()).find("InvalidReceiptsStateRoot") != string::npos; };
+			BOOST_CHECK_EXCEPTION(bcRef.insert(block.bytes(), receiptRef), InvalidReceiptsStateRoot, is_critical2);
+
+			BOOST_REQUIRE(bcRef.number() == 0);
+
+			try
+			{
+				bcRef.insert(block.bytes(), block.receipts());
+			}
+			catch(...)
+			{
+				BOOST_ERROR("Unexpected Exception!");
+			}
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
 }
 
 BOOST_AUTO_TEST_CASE(insertException)
 {
-	TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
-	BlockChain& bcRef = bc.interfaceUnsafe();
+	auto const threadFunc = []()
+	{
+		try
+		{
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			BlockChain& bcRef = bc.interfaceUnsafe();
 
-	TestTransaction tr = TestTransaction::defaultTransaction();
-	TestBlock block;
-	block.addTransaction(tr);
-	block.mine(bc);
-	bc.addBlock(block);
+			TestTransaction tr = TestTransaction::defaultTransaction();
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
+			bc.addBlock(block);
 
-	auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
-	BOOST_CHECK_EXCEPTION(bcRef.insert(block.bytes(), block.receipts()), AlreadyHaveBlock, is_critical);
+			auto is_critical = []( std::exception const& _e) { cnote << _e.what(); return true; };
+			BOOST_CHECK_EXCEPTION(bcRef.insert(block.bytes(), block.receipts()), AlreadyHaveBlock, is_critical);
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
 }
 
 BOOST_AUTO_TEST_CASE(rescue)
 {
-	TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
-	BlockChain& bcRef = bc.interfaceUnsafe();
+	auto const threadFunc = []()
+	{
+		try
+		{
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			BlockChain& bcRef = bc.interfaceUnsafe();
 
-	{
-		TestTransaction tr = TestTransaction::defaultTransaction();
-		TestBlock block;
-		block.addTransaction(tr);
-		block.mine(bc);
-		bc.addBlock(block);
-	}
+			{
+				TestTransaction tr = TestTransaction::defaultTransaction();
+				TestBlock block;
+				block.addTransaction(tr);
+				block.mine(bc);
+				bc.addBlock(block);
+			}
 
-	{
-		TestTransaction tr = TestTransaction::defaultTransaction(1);
-		TestBlock block;
-		block.addTransaction(tr);
-		block.mine(bc);
-		bc.addBlock(block);
-	}
+			{
+				TestTransaction tr = TestTransaction::defaultTransaction(1);
+				TestBlock block;
+				block.addTransaction(tr);
+				block.mine(bc);
+				bc.addBlock(block);
+			}
 
-	{
-		TestTransaction tr = TestTransaction::defaultTransaction(2);
-		TestBlock block;
-		block.addTransaction(tr);
-		block.mine(bc);
-		bc.addBlock(block);
-	}
+			{
+				TestTransaction tr = TestTransaction::defaultTransaction(2);
+				TestBlock block;
+				block.addTransaction(tr);
+				block.mine(bc);
+				bc.addBlock(block);
+			}
 
-	try
-	{
-		bcRef.rescue(bc.testGenesis().state().db());
-	}
-	catch(...)
-	{
-		BOOST_ERROR("Unexpected Exception!");
-	}
+			try
+			{
+				bcRef.rescue(bc.testGenesis().state().db());
+				BOOST_CHECK_MESSAGE(bcRef.number() == 3, "Rescued Blockchain missing some blocks!");
+			}
+			catch(...)
+			{
+				BOOST_ERROR("Unexpected Exception!");
+			}
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
 }
 
 BOOST_AUTO_TEST_CASE(updateStats)
 {
-	TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
-	BlockChain& bcRef = bc.interfaceUnsafe();
+	auto const threadFunc = []()
+	{
+		try
+		{
+			TestBlockChain bc(TestBlockChain::defaultGenesisBlock());
+			BlockChain& bcRef = bc.interfaceUnsafe();
 
-	BlockChain::Statistics stat = bcRef.usage();
-	//Absolutely random values here!
-	//BOOST_REQUIRE(stat.memBlockHashes == 0);
-	//BOOST_REQUIRE(stat.memBlocks == 1); //incorrect value here
-	//BOOST_REQUIRE(stat.memDetails == 0);
-	//BOOST_REQUIRE(stat.memLogBlooms == 0);
-	//BOOST_REQUIRE(stat.memReceipts == 0);
-	//BOOST_REQUIRE(stat.memTotal() == 0);
-	//BOOST_REQUIRE(stat.memTransactionAddresses == 0); //incorrect value here
+			BlockChain::Statistics stat = bcRef.usage();
+			//Absolutely random values here!
+			//BOOST_REQUIRE(stat.memBlockHashes == 0);
+			//BOOST_REQUIRE(stat.memBlocks == 1); //incorrect value here
+			//BOOST_REQUIRE(stat.memDetails == 0);
+			//BOOST_REQUIRE(stat.memLogBlooms == 0);
+			//BOOST_REQUIRE(stat.memReceipts == 0);
+			//BOOST_REQUIRE(stat.memTotal() == 0);
+			//BOOST_REQUIRE(stat.memTransactionAddresses == 0); //incorrect value here
 
-	TestTransaction tr = TestTransaction::defaultTransaction();
-	TestBlock block;
-	block.addTransaction(tr);
-	block.mine(bc);
-	bc.addBlock(block);
+			TestTransaction tr = TestTransaction::defaultTransaction();
+			TestBlock block;
+			block.addTransaction(tr);
+			block.mine(bc);
+			bc.addBlock(block);
 
-	stat = bcRef.usage(true);
-	BOOST_REQUIRE(stat.memBlockHashes == 0);
-	BOOST_REQUIRE(stat.memBlocks == 675);
-	BOOST_REQUIRE(stat.memDetails == 138);
-	BOOST_REQUIRE(stat.memLogBlooms == 8422);
-	BOOST_REQUIRE(stat.memReceipts == 0);
-	BOOST_REQUIRE(stat.memTotal() == 9235);
-	BOOST_REQUIRE(stat.memTransactionAddresses == 0);
+			stat = bcRef.usage(true);
+			BOOST_REQUIRE(stat.memBlockHashes == 0);
+			BOOST_REQUIRE(stat.memBlocks == 675);
+			BOOST_REQUIRE(stat.memDetails == 138);
+			BOOST_REQUIRE(stat.memLogBlooms == 8422);
+			BOOST_REQUIRE(stat.memReceipts == 0);
+			BOOST_REQUIRE(stat.memTotal() == 9235);
+			BOOST_REQUIRE(stat.memTransactionAddresses == 0);
 
-	//memchache size 33554432 - 3500 blocks before cache to be cleared
-	bcRef.garbageCollect(true);
+			//memchache size 33554432 - 3500 blocks before cache to be cleared
+			bcRef.garbageCollect(true);
+		}
+		catch (Exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << diagnostic_information(_e));
+		}
+		catch (std::exception const& _e)
+		{
+			BOOST_ERROR("Failed test with Exception: " << _e.what());
+		}
+		catch(...)
+		{
+			BOOST_ERROR("Exception thrown when trying to mine or import a block!");
+		}
+	};
+
+	testMiningFunc(threadFunc);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
