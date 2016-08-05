@@ -50,6 +50,7 @@ BOOST_AUTO_TEST_CASE(bStructures)
 
 BOOST_AUTO_TEST_CASE(bStates)
 {	
+	cnote << "Test";
 	TestBlockChain testBlockchain(TestBlockChain::defaultGenesisBlock());
 	TestBlock const& genesisBlock = testBlockchain.testGenesis();
 	OverlayDB const& genesisDB = genesisBlock.state().db();

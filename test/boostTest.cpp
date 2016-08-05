@@ -83,6 +83,19 @@ int main( int argc, char* argv[] )
 {
 	//Initialize options
 	dev::test::Options const& opt = dev::test::Options::get(argc, argv);
+
+	char* path = (argv[0]);
+	argc = 3;
+	argv = new char*[3];
+	argv[0] = new char[strlen(path)+1];
+	std::strcpy(argv[0], path);
+
+	argv[1] = new char[3];
+	std::strcpy(argv[1], "-t");
+
+	argv[2] = new char[strlen("BlockQueueSuite/BlockQueueImport")+1];
+	std::strcpy(argv[2], "BlockQueueSuite/BlockQueueImport");
+
 	if (opt.createRandomTest)
 	{
 		//disable initial output
