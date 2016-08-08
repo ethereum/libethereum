@@ -1074,22 +1074,11 @@ bool TestOutputHelper::passTest(json_spirit::mObject& _o, std::string& _testName
 		std::cout << std::endl;
 	}
 
-	if (test::Options::get().singleTest)
+	if (m_currentTestCaseName != "stRandom")
+	if (test::Options::get().singleTest && test::Options::get().singleTestName != _testName)
 	{
-		if (m_currentTestCaseName == "stRandom")
-		{
-			if (m_currentTestFileName != test::Options::get().singleTestName &&
-				m_currentTestFileName.substr(0, m_currentTestFileName.length()-5) != test::Options::get().singleTestName)
-			{
-				_o.clear();
-				return false;
-			}
-		}
-		else if (test::Options::get().singleTestName != _testName)
-		{
-			_o.clear();
-			return false;
-		}
+		_o.clear();
+		return false;
 	}
 
 	cnote << _testName;
