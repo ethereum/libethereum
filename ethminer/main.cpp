@@ -70,6 +70,7 @@ int main(int argc, char** argv)
 {
 	MinerCLI m(MinerCLI::OperationMode::Farm);
 
+	m.doEnv();
 	for (int i = 1; i < argc; ++i)
 	{
 		string arg = argv[i];
