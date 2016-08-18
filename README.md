@@ -1,6 +1,6 @@
 # Former home of libethereum (part of cpp-ethereum)
 
-[cpp-ethereum](http://ethereum.org) is the [Ethereum](http://ethereum.org) C++ client.
+[cpp-ethereum](http://cpp-ethereum.org) is the [Ethereum](http://ethereum.org) C++ client.
 
 This repository was a sub-module used within the [webthree-umbrella](https://github.com/ethereum/webthree-umbrella)
 repo between October 2015 and August 2016.
